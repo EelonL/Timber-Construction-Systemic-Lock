@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.5 erottaa rakennustyypit ja jakaa tilaajien riskikokemuksen alakomponentteihin."
+    "Versio 0.6 erottaa rakennustyypit ja jakaa tilaajien riskikokemuksen alakomponentteihin. Päätöksenteon satunnaisuutta on maltillistettu."
 )
 
 RISK_LABELS = {
@@ -146,17 +146,18 @@ with st.sidebar:
             )
 
     with st.expander("Lisäasetukset"):
+        st.caption("Nämä kuvaavat päätöksenteon hajontaa ja satunnaisia kokeiluja. Niiden kannattaa olla pieniä, jotta ne eivät ohita kustannus-, riski- ja kapasiteettimekanismeja.")
         params["choice_temperature"] = st.slider(
-            "Materiaalivalinnan satunnaisuus / kokeiluhalukkuus",
-            0.05, 0.80, float(params["choice_temperature"]), 0.05
+            "Päätöksenteon hajonta",
+            0.05, 0.40, float(params["choice_temperature"]), 0.01
         )
         params["wood_experiment_floor"] = st.slider(
             "Puun minimikokeiluosuus",
-            0.0, 0.15, float(params["wood_experiment_floor"]), 0.005
+            0.0, 0.05, float(params["wood_experiment_floor"]), 0.001
         )
         params["hybrid_experiment_floor"] = st.slider(
             "Hybridin minimikokeiluosuus",
-            0.0, 0.20, float(params["hybrid_experiment_floor"]), 0.005
+            0.0, 0.07, float(params["hybrid_experiment_floor"]), 0.001
         )
 
 
@@ -320,6 +321,6 @@ Tämä tekee näkyväksi, että puurakentamisen jarru ei ole vain yksi 'riski', 
 )
 
 st.info(
-    "Version 0.5: riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Version 0.6: materiaalivalinnan hajonnan oletuksia pienennettiin, jotta satunnaisuus ei dominoi mallia. Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
     "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
 )

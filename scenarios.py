@@ -20,8 +20,8 @@ SCENARIOS = {
         "updates": {
             "public_procurement_strength": 0.80,
             "share_public_developers": 0.45,
-            "wood_experiment_floor": 0.04,
-            "hybrid_experiment_floor": 0.06,
+            "wood_experiment_floor": 0.015,
+            "hybrid_experiment_floor": 0.025,
         },
     },
     "Kysyntä + kapasiteettituki": {
@@ -31,8 +31,8 @@ SCENARIOS = {
             "supplier_investment_support": 0.75,
             "standardization_investment": 0.70,
             "cluster_strength": 0.45,
-            "wood_experiment_floor": 0.04,
-            "hybrid_experiment_floor": 0.06,
+            "wood_experiment_floor": 0.015,
+            "hybrid_experiment_floor": 0.025,
         },
     },
     "Hiiliohjaus": {
@@ -40,8 +40,8 @@ SCENARIOS = {
         "updates": {
             "carbon_policy_strength": 0.85,
             "climate_sensitivity": 0.60,
-            "wood_experiment_floor": 0.035,
-            "hybrid_experiment_floor": 0.055,
+            "wood_experiment_floor": 0.012,
+            "hybrid_experiment_floor": 0.022,
         },
     },
     "Alueellinen klusteri": {
@@ -52,9 +52,9 @@ SCENARIOS = {
             "supplier_investment_support": 0.55,
             "education_investment": 0.65,
             "public_procurement_strength": 0.55,
-            "choice_temperature": 0.42,
-            "wood_experiment_floor": 0.05,
-            "hybrid_experiment_floor": 0.07,
+            "choice_temperature": 0.24,
+            "wood_experiment_floor": 0.020,
+            "hybrid_experiment_floor": 0.030,
         },
     },
     "Negatiivinen shokki": {

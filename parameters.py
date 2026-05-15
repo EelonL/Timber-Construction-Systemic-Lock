@@ -178,9 +178,9 @@ DEFAULT_PARAMS = {
     "climate_sensitivity": 0.45,
 
     # Choice model
-    "choice_temperature": 0.35,
-    "wood_experiment_floor": 0.025,
-    "hybrid_experiment_floor": 0.04,
+    "choice_temperature": 0.18,
+    "wood_experiment_floor": 0.005,
+    "hybrid_experiment_floor": 0.010,
     "min_supplier_capacity": 0.05,
 
     # Policy levers, 0..1

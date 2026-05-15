@@ -1,5 +1,17 @@
 # TTS PuuSiirtymä
 
+## Version 0.6
+
+Korjaus materiaalivalinnan satunnaisuuteen:
+
+- `choice_temperature` pienennettiin oletuksesta 0.35 arvoon 0.18.
+- Puun minimikokeiluosuus pienennettiin 0.025 → 0.005.
+- Hybridin minimikokeiluosuus pienennettiin 0.04 → 0.01.
+- Skenaarioiden kokeiluosuuksia maltillistettiin.
+- Käyttöliittymässä termi muutettiin muotoon “Päätöksenteon hajonta”.
+- Tarkoitus on, että satunnaisuus kuvaa rakennuttajien heterogeenisuutta, ei toimi piilossa olevana politiikkavipuna.
+
+
 Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumisesta ja mahdollisesta markkinasiirtymästä.
 
 Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.
