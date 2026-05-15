@@ -750,36 +750,6 @@ with st.expander("Näytä rakennustyyppikohtainen data"):
 with st.expander("Näytä hankeloki"):
     st.dataframe(projects, use_container_width=True)
 
-st.subheader("Tulkinta")
-st.markdown(
-    """
-Versio 0.5 jakaa tilaajien riskikokemuksen kuuteen osaan:
-
-- **osaamisriski**: onko suunnittelijoilla, urakoitsijoilla ja työvoimalla riittävä osaaminen,
-- **sääntely- ja paloturvallisuusriski**: ovatko lupakäytännöt, paloturvallisuus ja hyväksyntäprosessi ennakoitavia,
-- **kustannusepävarmuus**: kuinka paljon hinta- ja riskipreemioita liittyy puuhun,
-- **toimitusketjuriski**: riittääkö kapasiteetti ja onko toimittajakenttä luotettava,
-- **kosteus- ja tekninen riski**: teknisen toteutuksen, kosteudenhallinnan ja kestävyyden epävarmuus,
-- **markkina-/hyväksyttävyysriski**: tilaajien, käyttäjien, sijoittajien ja markkinan hyväksyntä.
-
-Tämä tekee näkyväksi, että puurakentamisen jarru ei ole vain yksi 'riski', vaan useiden riskien yhdistelmä. Eri skenaariot voivat pienentää eri riskikomponentteja eri tahtiin.
-
-Versio 0.7 lisää tähän materiaalivirran rajoitteen: jos puutuotekysyntä kasvaa nopeammin kuin rakentamiseen soveltuva kapasiteetti, kustannusepävarmuus ja toimitusketjuriski kasvavat. Vientimarkkinan houkuttelevuus voi hidastaa kapasiteetin ohjautumista kotimaiseen rakentamiseen.
-"""
-)
-
-st.info(
-    "Version 0.9: malliin lisättiin ajassa kiristyvä hiiliohjaus ja tarkennettiin julkisen hankinnan rakennustyyppikohtaista vaikutusta.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
-    "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
-)
-
-
-st.subheader("Lataa kaaviot")
-
-st.caption(
-    "Voit ladata yksittäisen kaavion PNG-kuvana tai kaikki kaaviot ZIP-pakettina. "
-    "Kuvat muodostetaan nykyisillä skenaario- ja parametriasetuksilla."
-)
 
 if CHART_EXPORTS:
     chart_names = [name for name, _ in CHART_EXPORTS]
