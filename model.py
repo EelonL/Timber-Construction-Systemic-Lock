@@ -47,6 +47,7 @@ class WoodConstructionLockInModel(MesaModel):
 
         self.random = random.Random(self.params["random_seed"])
         self.year = 0
+        self.effective_carbon_policy_strength = self._effective_carbon_policy_strength()
 
         # System state variables
         self.trust_in_wood = self.params["initial_trust_in_wood"]
@@ -104,6 +105,21 @@ class WoodConstructionLockInModel(MesaModel):
         self.history = []
         self.segment_history = []
         self.project_log = []
+
+    def _effective_carbon_policy_strength(self):
+        """Return year-specific carbon policy strength.
+
+        Version 0.9 models carbon policy as tightening over time:
+        an initial, relatively mild phase and a later, stronger phase.
+        """
+        p = self.params
+        if not p.get("use_dynamic_carbon_policy", True):
+            return p.get("carbon_policy_strength", 0.25)
+
+        tightening_year = int(p.get("carbon_policy_tightening_year", 3))
+        if self.year >= tightening_year:
+            return p.get("carbon_policy_tightened_strength", p.get("carbon_policy_strength", 0.25))
+        return p.get("carbon_policy_initial_strength", p.get("carbon_policy_strength", 0.25))
 
     def _initial_weighted_market_shares(self):
         total_weight = sum(v["project_share"] for v in self.building_types.values())
@@ -318,7 +334,7 @@ class WoodConstructionLockInModel(MesaModel):
         )
 
         policy_gain = (
-            (0.01 * p["cluster_strength"] + 0.004 * p["carbon_policy_strength"])
+            (0.01 * p["cluster_strength"] + 0.004 * self.effective_carbon_policy_strength)
             * trust_headroom
         )
 
@@ -371,7 +387,7 @@ class WoodConstructionLockInModel(MesaModel):
             self.attractiveness
             + p["attractiveness_success_impact"] * success_signal * 10
             - p["attractiveness_failure_impact"] * failure_signal * 5
-            + 0.01 * p["carbon_policy_strength"]
+            + 0.01 * self.effective_carbon_policy_strength
             + 0.01 * self.standardization
         )
 
@@ -436,6 +452,8 @@ class WoodConstructionLockInModel(MesaModel):
         return rows
 
     def step(self):
+        self.effective_carbon_policy_strength = self._effective_carbon_policy_strength()
+
         projects_this_year = max(
             1,
             int(self.params["projects_per_year"] * self._business_cycle_multiplier())
@@ -503,6 +521,7 @@ class WoodConstructionLockInModel(MesaModel):
             "concrete_share": self.concrete_market_share,
             "wood_like_share": self.wood_demand_pressure,
             "wood_demand_pressure": self.wood_demand_pressure,
+            "effective_carbon_policy_strength": self.effective_carbon_policy_strength,
             "trust_in_wood": self.trust_in_wood,
             "design_competence": self.design_competence,
             "contractor_competence": self.contractor_competence,

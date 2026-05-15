@@ -1,5 +1,20 @@
 # TTS PuuSiirtymä
 
+## Version 0.9
+
+Uutta:
+
+- Hiiliohjaus muutettiin ajassa kiristyväksi ohjaukseksi.
+- Uudet parametrit:
+  - `carbon_policy_initial_strength`
+  - `carbon_policy_tightened_strength`
+  - `carbon_policy_tightening_year`
+  - `use_dynamic_carbon_policy`
+- Malli käyttää materiaalivalinnassa `effective_carbon_policy_strength`-muuttujaa.
+- Julkisen hankinnan vaikutusta tarkennettiin rakennustyypeittäin: vaikutus on vahvin opetusrakennuksissa ja muissa julkisissa rakennuksissa, heikompi kerrostaloissa, pienkerrostaloissa, toimitiloissa ja teollisuusrakennuksissa.
+- Skenaarioiden julkisen hankinnan ja hiiliohjauksen arvoja maltillistettiin tutkimus- ja toteumahavaintojen mukaisesti.
+- Käyttöliittymään lisättiin hiiliohjauksen kehityskuvaaja ja säätimet.
+
 ## Version 0.8
 
 Uutta:

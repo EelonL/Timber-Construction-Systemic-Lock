@@ -17,7 +17,7 @@ BUILDING_TYPES = {
         "risk_multiplier": 1.25,
         "public_share": 0.15,
         "climate_relevance": 1.00,
-        "policy_relevance": 0.80,
+        "policy_relevance": 0.60,
         "capacity_intensity": 1.20,
         "risk_components": {
             "competence": 0.68,
@@ -38,7 +38,7 @@ BUILDING_TYPES = {
         "risk_multiplier": 0.75,
         "public_share": 0.20,
         "climate_relevance": 0.80,
-        "policy_relevance": 0.60,
+        "policy_relevance": 0.50,
         "capacity_intensity": 0.70,
         "risk_components": {
             "competence": 0.32,
@@ -101,7 +101,7 @@ BUILDING_TYPES = {
         "risk_multiplier": 0.85,
         "public_share": 0.10,
         "climate_relevance": 0.70,
-        "policy_relevance": 0.50,
+        "policy_relevance": 0.40,
         "capacity_intensity": 0.75,
         "risk_components": {
             "competence": 0.40,
@@ -122,7 +122,7 @@ BUILDING_TYPES = {
         "risk_multiplier": 1.00,
         "public_share": 0.20,
         "climate_relevance": 0.90,
-        "policy_relevance": 0.60,
+        "policy_relevance": 0.50,
         "capacity_intensity": 1.00,
         "risk_components": {
             "competence": 0.50,
@@ -175,7 +175,7 @@ DEFAULT_PARAMS = {
     "capacity_shortage_penalty": 0.18,
     "risk_sensitivity": 0.65,
     "cost_sensitivity": 0.60,
-    "climate_sensitivity": 0.45,
+    "climate_sensitivity": 0.40,
 
     # Choice model
     "choice_temperature": 0.18,
@@ -185,7 +185,16 @@ DEFAULT_PARAMS = {
 
     # Policy levers, 0..1
     "public_procurement_strength": 0.25,
-    "carbon_policy_strength": 0.20,
+
+    # Carbon policy, v0.9.
+    # One simulation step is interpreted as one year.
+    # If year 0 is 2026, tightening_year=3 roughly corresponds to 2029.
+    "carbon_policy_strength": 0.25,  # legacy / UI fallback
+    "carbon_policy_initial_strength": 0.25,
+    "carbon_policy_tightened_strength": 0.55,
+    "carbon_policy_tightening_year": 3,
+    "use_dynamic_carbon_policy": True,
+
     "education_investment": 0.30,
     "standardization_investment": 0.25,
     "supplier_investment_support": 0.20,
@@ -264,7 +273,7 @@ DEFAULT_PARAMS = {
 
     # Developer preference baselines
     "public_climate_weight": 0.55,
-    "private_climate_weight": 0.25,
+    "private_climate_weight": 0.20,
     "pioneer_bonus": 0.18,
     "conservative_risk_extra": 0.15,
 

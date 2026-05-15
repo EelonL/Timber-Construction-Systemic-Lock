@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.8 lisää kaksikanavaisen koulutus- ja osaajaputken."
+    "Versio 0.9 lisää ajassa kiristyvän hiiliohjauksen ja tarkentaa julkisen hankinnan rakennustyyppikohtaista vaikutusta."
 )
 
 RISK_LABELS = {
@@ -50,10 +50,29 @@ with st.sidebar:
         "Julkinen kysyntä / hankintapaine",
         0.0, 1.0, float(params["public_procurement_strength"]), 0.05
     )
-    params["carbon_policy_strength"] = st.slider(
-        "Hiiliohjauksen voimakkuus",
-        0.0, 1.0, float(params["carbon_policy_strength"]), 0.05
+    params["use_dynamic_carbon_policy"] = st.checkbox(
+        "Käytä ajassa kiristyvää hiiliohjausta",
+        value=bool(params.get("use_dynamic_carbon_policy", True))
     )
+    if params["use_dynamic_carbon_policy"]:
+        params["carbon_policy_initial_strength"] = st.slider(
+            "Hiiliohjauksen alkuvaiheen voimakkuus",
+            0.0, 1.0, float(params.get("carbon_policy_initial_strength", 0.25)), 0.05
+        )
+        params["carbon_policy_tightened_strength"] = st.slider(
+            "Hiiliohjauksen kiristynyt voimakkuus",
+            0.0, 1.0, float(params.get("carbon_policy_tightened_strength", 0.55)), 0.05
+        )
+        params["carbon_policy_tightening_year"] = st.slider(
+            "Hiiliohjauksen kiristymisvuosi simulaatiossa",
+            0, 20, int(params.get("carbon_policy_tightening_year", 3)), 1
+        )
+        params["carbon_policy_strength"] = params["carbon_policy_initial_strength"]
+    else:
+        params["carbon_policy_strength"] = st.slider(
+            "Hiiliohjauksen voimakkuus",
+            0.0, 1.0, float(params.get("carbon_policy_strength", 0.25)), 0.05
+        )
     params["education_investment"] = st.slider(
         "Koulutuspanostus",
         0.0, 1.0, float(params["education_investment"]), 0.05
@@ -284,6 +303,15 @@ market_df = market_df.rename(columns={
 })
 st.line_chart(market_df)
 
+st.subheader("Hiiliohjauksen ja julkisen hankinnan ohjaus")
+policy_df = history.set_index("year")[[
+    "effective_carbon_policy_strength",
+]]
+policy_df = policy_df.rename(columns={
+    "effective_carbon_policy_strength": "Efektiivinen hiiliohjauksen voimakkuus",
+})
+st.line_chart(policy_df)
+
 st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
 material_df = history.set_index("year")[[
     "wood_demand_pressure",
@@ -450,6 +478,6 @@ Versio 0.7 lisää tähän materiaalivirran rajoitteen: jos puutuotekysyntä kas
 )
 
 st.info(
-    "Version 0.8: malliin lisättiin kaksikanavainen koulutus- ja osaajaputki.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Version 0.9: malliin lisättiin ajassa kiristyvä hiiliohjaus ja tarkennettiin julkisen hankinnan rakennustyyppikohtaista vaikutusta.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
     "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
 )

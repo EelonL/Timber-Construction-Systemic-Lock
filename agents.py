@@ -256,8 +256,10 @@ class DeveloperAgent(BaseAgent):
         wood_risk = composite_risk(wood_components, p, bt.get("risk_multiplier", 1.0))
         hybrid_risk = composite_risk(hybrid_components, p, bt.get("risk_multiplier", 1.0))
 
+        carbon_policy_strength = getattr(m, "effective_carbon_policy_strength", p.get("carbon_policy_strength", 0.25))
+
         carbon_benefit_wood = (
-            p["carbon_policy_strength"]
+            carbon_policy_strength
             * climate_weight
             * p["climate_sensitivity"]
             * bt.get("climate_relevance", 1.0)
@@ -296,7 +298,7 @@ class DeveloperAgent(BaseAgent):
         concrete_score = (
             0.10
             + 0.13 * m.concrete_lock_in
-            - 0.12 * p["carbon_policy_strength"] * climate_weight * bt.get("climate_relevance", 1.0)
+            - 0.12 * carbon_policy_strength * climate_weight * bt.get("climate_relevance", 1.0)
         )
 
         # Noise captures project-specific variation.

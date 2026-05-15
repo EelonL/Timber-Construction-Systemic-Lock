@@ -18,7 +18,7 @@ SCENARIOS = {
     "Julkinen kysyntäveturi": {
         "description": "Julkiset tilaajat painottavat puuta ja hybridiratkaisuja erityisesti kouluissa, päiväkodeissa ja muissa julkisissa hankkeissa.",
         "updates": {
-            "public_procurement_strength": 0.80,
+            "public_procurement_strength": 0.65,
             "share_public_developers": 0.45,
             "wood_experiment_floor": 0.015,
             "hybrid_experiment_floor": 0.025,
@@ -27,7 +27,7 @@ SCENARIOS = {
     "Kysyntä + kapasiteettituki": {
         "description": "Julkinen kysyntä yhdistyy teollisen kapasiteetin ja standardoinnin tukeen.",
         "updates": {
-            "public_procurement_strength": 0.75,
+            "public_procurement_strength": 0.65,
             "supplier_investment_support": 0.75,
             "standardization_investment": 0.70,
             "cluster_strength": 0.45,
@@ -38,8 +38,10 @@ SCENARIOS = {
     "Hiiliohjaus": {
         "description": "Vähähiilisyys vaikuttaa aidosti tarjousvertailuun ja materiaalivalintoihin.",
         "updates": {
-            "carbon_policy_strength": 0.85,
-            "climate_sensitivity": 0.60,
+            "carbon_policy_initial_strength": 0.30,
+            "carbon_policy_tightened_strength": 0.60,
+            "carbon_policy_tightening_year": 3,
+            "climate_sensitivity": 0.40,
             "wood_experiment_floor": 0.012,
             "hybrid_experiment_floor": 0.022,
         },
@@ -51,7 +53,7 @@ SCENARIOS = {
             "standardization_investment": 0.65,
             "supplier_investment_support": 0.55,
             "education_investment": 0.65,
-            "public_procurement_strength": 0.55,
+            "public_procurement_strength": 0.50,
             "choice_temperature": 0.24,
             "wood_experiment_floor": 0.020,
             "hybrid_experiment_floor": 0.030,
