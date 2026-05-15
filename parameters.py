@@ -235,7 +235,7 @@ DEFAULT_PARAMS = {
     # annual_market_volume_index scales the real market volume represented by the sample.
     "annual_market_volume_index": 1.00,
     "wood_project_material_intensity": 1.00,
-    "hybrid_project_material_intensity": 0.50,
+    "hybrid_project_material_intensity": 0.40,
 
     # Export/domestic allocation logic.
     "export_market_attractiveness": 0.70,
