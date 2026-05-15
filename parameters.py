@@ -149,9 +149,9 @@ DEFAULT_PARAMS = {
     "initial_supplier_capacity": 0.15,
     "initial_standardization": 0.22,
     "initial_regulatory_routine": 0.22,
-    "initial_education_capacity": 0.25,
-    "initial_workforce": 0.25,
-    "initial_attractiveness": 0.28,
+    "initial_education_capacity": 0.20,
+    "initial_workforce": 0.20,
+    "initial_attractiveness": 0.25,
     "initial_concrete_lock_in": 0.80,
 
     # Trust dynamics
@@ -227,11 +227,35 @@ DEFAULT_PARAMS = {
     "export_reallocation_sensitivity": 0.25,
     "domestic_demand_stability": 0.30,
 
-    # Education dynamics
+    # Education dynamics: legacy aggregate values kept for compatibility.
     "education_delay_years": 3,
     "education_response_rate": 0.05,
     "attractiveness_success_impact": 0.03,
     "attractiveness_failure_impact": 0.06,
+
+    # Education and workforce pipeline, v0.8.
+    # These reflect a long-term declining attractiveness and narrowed education pipeline.
+    "initial_youth_attractiveness": 0.18,
+    "initial_adult_attractiveness": 0.32,
+    "initial_vocational_education_capacity": 0.28,
+    "initial_he_education_capacity": 0.12,
+    "initial_vocational_workforce": 0.26,
+    "initial_engineering_workforce": 0.14,
+
+    "vocational_education_delay_years": 3,
+    "he_education_delay_years": 4,
+    "retirement_pressure_vocational": 0.025,
+    "retirement_pressure_engineering": 0.030,
+    "industry_training_strength": 0.25,
+
+    # How strongly market success and visible career prospects affect attractiveness.
+    "youth_attractiveness_success_impact": 0.020,
+    "adult_attractiveness_success_impact": 0.030,
+    "attractiveness_decline_pressure": 0.010,
+
+    # How strongly education capacity can respond to demand and investment.
+    "vocational_capacity_response_rate": 0.030,
+    "he_capacity_response_rate": 0.020,
 
     # Developer mix. In v0.3+ building types also have public_share, so this is a fallback.
     "share_public_developers": 0.35,

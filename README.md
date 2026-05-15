@@ -1,5 +1,18 @@
 # TTS PuuSiirtymä
 
+## Version 0.8
+
+Uutta:
+
+- Koulutus- ja osaajaputki jaettiin kahteen kanavaan:
+  - ammatillinen putki → työmaa-, tuotanto-, asennus- ja tehdasosaaminen
+  - korkeakoulu-/insinööriputki → suunnittelu-, järjestelmä-, tuotanto- ja kehitysosaaminen
+- Nuorten vetovoima ja aikuisten/alanvaihtajien vetovoima erotettiin toisistaan.
+- Malliin lisättiin poistuma-/eläköitymispaine ammatilliselle ja insinööriosaamiselle.
+- Yritys–oppilaitosyhteistyö vaikuttaa osaajapohjan ja osaamisen kasvuun.
+- Suunnitteluosaaminen saa enemmän tukea insinööriosaajapohjasta; urakointi-/työmaaosaaminen saa enemmän tukea ammatillisesta osaajapohjasta.
+- Käyttöliittymään lisättiin koulutusputken kuvaaja ja säätimet.
+
 ## Version 0.7.1
 
 Korjaus:

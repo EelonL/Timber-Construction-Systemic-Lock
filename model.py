@@ -73,6 +73,14 @@ class WoodConstructionLockInModel(MesaModel):
         self.education_capacity = self.params["initial_education_capacity"]
         self.workforce = self.params["initial_workforce"]
         self.attractiveness = self.params["initial_attractiveness"]
+
+        # Education and workforce pipeline, v0.8.
+        self.youth_attractiveness = self.params.get("initial_youth_attractiveness", 0.18)
+        self.adult_attractiveness = self.params.get("initial_adult_attractiveness", 0.32)
+        self.vocational_education_capacity = self.params.get("initial_vocational_education_capacity", 0.28)
+        self.he_education_capacity = self.params.get("initial_he_education_capacity", 0.12)
+        self.vocational_workforce = self.params.get("initial_vocational_workforce", 0.26)
+        self.engineering_workforce = self.params.get("initial_engineering_workforce", 0.14)
         self.concrete_lock_in = self.params["initial_concrete_lock_in"]
 
         # Overall initial shares are weighted averages from building types.
@@ -326,17 +334,23 @@ class WoodConstructionLockInModel(MesaModel):
             trust_ceiling
         )
 
-        competence_learning = p["learning_rate"] * wood_like_share
+        effective_learning_rate = p["learning_rate"] * (1 + 0.5 * p.get("cluster_strength", 0.10))
+        competence_learning = effective_learning_rate * wood_like_share
+
+        # Engineering workforce supports design/system competence.
+        # Vocational workforce supports contractor/site/factory competence.
         self.design_competence = clamp(
             self.design_competence
             + competence_learning
-            + 0.4 * competence_learning * self.workforce
+            + 0.45 * competence_learning * self.engineering_workforce
+            + 0.15 * p.get("industry_training_strength", 0.25) * wood_like_share
             - p["competence_decay"]
         )
         self.contractor_competence = clamp(
             self.contractor_competence
             + 0.85 * competence_learning
-            + 0.3 * competence_learning * self.workforce
+            + 0.40 * competence_learning * self.vocational_workforce
+            + 0.18 * p.get("industry_training_strength", 0.25) * wood_like_share
             - p["competence_decay"]
         )
 
@@ -505,6 +519,12 @@ class WoodConstructionLockInModel(MesaModel):
             "education_capacity": self.education_capacity,
             "workforce": self.workforce,
             "attractiveness": self.attractiveness,
+            "youth_attractiveness": self.youth_attractiveness,
+            "adult_attractiveness": self.adult_attractiveness,
+            "vocational_education_capacity": self.vocational_education_capacity,
+            "he_education_capacity": self.he_education_capacity,
+            "vocational_workforce": self.vocational_workforce,
+            "engineering_workforce": self.engineering_workforce,
             "concrete_lock_in": self.concrete_lock_in,
             "reference_stock": self.reference_stock,
             "avg_wood_cost_premium": avg_cost_wood,

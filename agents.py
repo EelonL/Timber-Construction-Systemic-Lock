@@ -348,38 +348,111 @@ class SupplierAgent(BaseAgent):
 
 
 class EducationAgent(BaseAgent):
-    """Aggregated education and workforce pipeline with a delay."""
+    """Education and workforce pipeline with vocational and higher-education channels.
+
+    Version 0.8 separates:
+    - youth attractiveness and adult attractiveness,
+    - vocational education capacity and HE/engineering education capacity,
+    - vocational workforce and engineering workforce.
+
+    The old aggregate variables `workforce`, `education_capacity` and `attractiveness`
+    are still updated as weighted summaries for compatibility with the rest of the model.
+    """
 
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.pipeline = [0.0 for _ in range(model.params["education_delay_years"])]
+
+        p = model.params
+        self.vocational_pipeline = [
+            0.0 for _ in range(p.get("vocational_education_delay_years", 3))
+        ]
+        self.he_pipeline = [
+            0.0 for _ in range(p.get("he_education_delay_years", 4))
+        ]
 
     def step(self):
         m = self.model
         p = m.params
 
-        demand_signal = 0.5 * m.wood_market_share + 0.3 * m.hybrid_market_share + 0.2 * m.attractiveness
-        new_students = clamp(
-            p["education_investment"] * p["education_response_rate"]
-            + demand_signal * 0.04
-            + p["cluster_strength"] * 0.03
+        market_signal = 0.55 * m.wood_market_share + 0.30 * m.hybrid_market_share + 0.15 * m.reference_stock
+        success_signal = max(0.0, m.trust_in_wood - p.get("trust_baseline", 0.28))
+        training = p.get("industry_training_strength", 0.25)
+
+        # Attractiveness: youth pipeline is more inert and starts lower;
+        # adult pipeline reacts somewhat more to visible demand and reskilling opportunities.
+        m.youth_attractiveness = clamp(
+            m.youth_attractiveness
+            + p.get("youth_attractiveness_success_impact", 0.020) * success_signal
+            + 0.010 * p.get("education_investment", 0.30)
+            + 0.006 * p.get("cluster_strength", 0.10)
+            - p.get("attractiveness_decline_pressure", 0.010)
+        )
+        m.adult_attractiveness = clamp(
+            m.adult_attractiveness
+            + p.get("adult_attractiveness_success_impact", 0.030) * success_signal
+            + 0.012 * p.get("education_investment", 0.30)
+            + 0.008 * p.get("cluster_strength", 0.10)
+            - 0.6 * p.get("attractiveness_decline_pressure", 0.010)
         )
 
-        graduating = self.pipeline.pop(0) if self.pipeline else new_students
-        self.pipeline.append(new_students)
-
-        m.workforce = clamp(
-            m.workforce
-            + graduating
-            - 0.012
+        # Capacity responds slowly; weak attractiveness prevents full utilization.
+        vocational_demand = (
+            0.45 * m.youth_attractiveness
+            + 0.35 * m.adult_attractiveness
+            + 0.20 * market_signal
+        )
+        he_demand = (
+            0.35 * m.youth_attractiveness
+            + 0.35 * m.adult_attractiveness
+            + 0.30 * market_signal
         )
 
-        m.education_capacity = clamp(
-            m.education_capacity
-            + 0.04 * p["education_investment"]
-            + 0.02 * p["cluster_strength"]
-            - 0.008
+        new_vocational_students = clamp(
+            m.vocational_education_capacity
+            * vocational_demand
+            * (0.60 + 0.40 * p.get("education_investment", 0.30))
         )
+        new_he_students = clamp(
+            m.he_education_capacity
+            * he_demand
+            * (0.55 + 0.45 * p.get("education_investment", 0.30))
+        )
+
+        vocational_graduating = self.vocational_pipeline.pop(0) if self.vocational_pipeline else new_vocational_students
+        he_graduating = self.he_pipeline.pop(0) if self.he_pipeline else new_he_students
+        self.vocational_pipeline.append(new_vocational_students)
+        self.he_pipeline.append(new_he_students)
+
+        m.vocational_workforce = clamp(
+            m.vocational_workforce
+            + vocational_graduating
+            + 0.025 * training * market_signal
+            - p.get("retirement_pressure_vocational", 0.025)
+        )
+        m.engineering_workforce = clamp(
+            m.engineering_workforce
+            + he_graduating
+            + 0.015 * training * market_signal
+            - p.get("retirement_pressure_engineering", 0.030)
+        )
+
+        m.vocational_education_capacity = clamp(
+            m.vocational_education_capacity
+            + p.get("vocational_capacity_response_rate", 0.030)
+            * (p.get("education_investment", 0.30) + 0.5 * market_signal + 0.3 * training)
+            - 0.010 * (1 - m.youth_attractiveness)
+        )
+        m.he_education_capacity = clamp(
+            m.he_education_capacity
+            + p.get("he_capacity_response_rate", 0.020)
+            * (p.get("education_investment", 0.30) + 0.5 * market_signal + 0.3 * training)
+            - 0.012 * (1 - m.youth_attractiveness)
+        )
+
+        # Compatibility summaries.
+        m.workforce = clamp(0.55 * m.vocational_workforce + 0.45 * m.engineering_workforce)
+        m.education_capacity = clamp(0.60 * m.vocational_education_capacity + 0.40 * m.he_education_capacity)
+        m.attractiveness = clamp(0.45 * m.youth_attractiveness + 0.55 * m.adult_attractiveness)
 
 
 class RegulatorAgent(BaseAgent):

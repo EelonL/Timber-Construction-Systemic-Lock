@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.7 lisää materiaalivirtojen ja puutuotekapasiteetin rajoittavan silmukan."
+    "Versio 0.8 lisää kaksikanavaisen koulutus- ja osaajaputken."
 )
 
 RISK_LABELS = {
@@ -138,6 +138,45 @@ with st.sidebar:
         params["export_reallocation_sensitivity"] = st.slider(
             "Viennistä kotimaahan allokoinnin herkkyys",
             0.00, 1.00, float(params.get("export_reallocation_sensitivity", 0.25)), 0.01
+        )
+
+    with st.expander("Koulutuksen vetovoima ja osaajaputki"):
+        st.caption("Nämä kuvaavat puutuotealan koulutuksen pitkään kaventunutta vetovoimaa ja erillisiä ammatillisia sekä korkeakoulutason osaajaputkia.")
+        params["initial_youth_attractiveness"] = st.slider(
+            "Nuorten vetovoima alussa",
+            0.00, 1.00, float(params.get("initial_youth_attractiveness", 0.18)), 0.01
+        )
+        params["initial_adult_attractiveness"] = st.slider(
+            "Aikuisten / alanvaihtajien vetovoima alussa",
+            0.00, 1.00, float(params.get("initial_adult_attractiveness", 0.32)), 0.01
+        )
+        params["initial_vocational_education_capacity"] = st.slider(
+            "Ammatillisen koulutuksen kapasiteetti alussa",
+            0.00, 1.00, float(params.get("initial_vocational_education_capacity", 0.28)), 0.01
+        )
+        params["initial_he_education_capacity"] = st.slider(
+            "Korkeakoulu-/insinöörikoulutuksen kapasiteetti alussa",
+            0.00, 1.00, float(params.get("initial_he_education_capacity", 0.12)), 0.01
+        )
+        params["initial_vocational_workforce"] = st.slider(
+            "Ammatillinen osaajapohja alussa",
+            0.00, 1.00, float(params.get("initial_vocational_workforce", 0.26)), 0.01
+        )
+        params["initial_engineering_workforce"] = st.slider(
+            "Insinööri-/suunnitteluosaajapohja alussa",
+            0.00, 1.00, float(params.get("initial_engineering_workforce", 0.14)), 0.01
+        )
+        params["industry_training_strength"] = st.slider(
+            "Yritys–oppilaitosyhteistyö ja työelämäkoulutus",
+            0.00, 1.00, float(params.get("industry_training_strength", 0.25)), 0.01
+        )
+        params["retirement_pressure_vocational"] = st.slider(
+            "Ammatillisen osaajapohjan poistuma",
+            0.00, 0.08, float(params.get("retirement_pressure_vocational", 0.025)), 0.001
+        )
+        params["retirement_pressure_engineering"] = st.slider(
+            "Insinööriosaajapohjan poistuma",
+            0.00, 0.08, float(params.get("retirement_pressure_engineering", 0.030)), 0.001
         )
 
     with st.expander("Riskikomponenttien painot"):
@@ -264,6 +303,25 @@ material_df = material_df.rename(columns={
 })
 st.line_chart(material_df)
 
+st.subheader("Koulutuksen vetovoima ja osaajaputki")
+education_df = history.set_index("year")[[
+    "youth_attractiveness",
+    "adult_attractiveness",
+    "vocational_education_capacity",
+    "he_education_capacity",
+    "vocational_workforce",
+    "engineering_workforce",
+]]
+education_df = education_df.rename(columns={
+    "youth_attractiveness": "Nuorten vetovoima",
+    "adult_attractiveness": "Aikuisten / alanvaihtajien vetovoima",
+    "vocational_education_capacity": "Ammatillisen koulutuksen kapasiteetti",
+    "he_education_capacity": "Korkeakoulu-/insinöörikoulutuksen kapasiteetti",
+    "vocational_workforce": "Ammatillinen osaajapohja",
+    "engineering_workforce": "Insinööri-/suunnitteluosaajapohja",
+})
+st.line_chart(education_df)
+
 st.subheader("Puun osuus rakennustyypeittäin")
 wood_pivot = segments.pivot(index="year", columns="building_type", values="wood_share")
 st.line_chart(wood_pivot)
@@ -331,6 +389,8 @@ state_df = history.set_index("year")[[
     "contractor_competence",
     "standardization",
     "regulatory_routine",
+    "vocational_workforce",
+    "engineering_workforce",
     "workforce",
     "concrete_lock_in",
 ]]
@@ -342,7 +402,9 @@ state_df = state_df.rename(columns={
     "contractor_competence": "Urakointi-/työmaaosaaminen",
     "standardization": "Standardointi",
     "regulatory_routine": "Viranomaisrutiini",
-    "workforce": "Osaajapohja",
+    "vocational_workforce": "Ammatillinen osaajapohja",
+    "engineering_workforce": "Insinööri-/suunnitteluosaajapohja",
+    "workforce": "Osaajapohja yhteensä",
     "concrete_lock_in": "Betonijärjestelmän lukkiutuminen",
 })
 st.line_chart(state_df)
@@ -388,6 +450,6 @@ Versio 0.7 lisää tähän materiaalivirran rajoitteen: jos puutuotekysyntä kas
 )
 
 st.info(
-    "Version 0.7: malliin lisättiin materiaalikapasiteetin ja puutuotevirtojen rajoite.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Version 0.8: malliin lisättiin kaksikanavainen koulutus- ja osaajaputki.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
     "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
 )
