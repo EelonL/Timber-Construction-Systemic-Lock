@@ -1,13 +1,11 @@
-from pathlib import Path
 import copy
 import io
 import re
 import zipfile
-
 import pandas as pd
 import streamlit as st
 import altair as alt
-import vl_convert as vlc
+import matplotlib.pyplot as plt
 
 from model import WoodConstructionLockInModel
 from scenarios import SCENARIOS, get_params_for_scenario
@@ -15,8 +13,8 @@ from parameters import BUILDING_TYPES
 
 
 st.set_page_config(
-    page_title="Puurakentamisen systeeminen malli",
-    page_icon="assets/tts_logo.jpg",
+    page_title="TTS PuuSiirtymä",
+    page_icon="🌲",
     layout="wide",
 )
 
@@ -132,7 +130,6 @@ st.markdown(
 )
 
 
-
 CHART_EXPORTS = []
 
 
@@ -144,20 +141,83 @@ def safe_filename(name: str) -> str:
     return name.strip("_") or "kaavio"
 
 
-def chart_to_png_bytes(chart: alt.Chart) -> bytes:
-    """Convert an Altair/Vega-Lite chart to PNG bytes."""
-    spec = chart.to_dict()
-    return vlc.vegalite_to_png(spec, scale=2)
+def chart_to_png_bytes(chart_name: str, data: pd.DataFrame) -> bytes:
+    """Create a downloadable PNG chart with Matplotlib.
+
+    This is used only for exported images. The on-screen charts still use Altair.
+    Matplotlib is used because it reliably includes titles, axes and legend text
+    in Streamlit Community Cloud PNG exports.
+    """
+    fig, ax = plt.subplots(figsize=(12, 7), dpi=200)
+
+    plot_data = data.copy()
+
+    for i, column in enumerate(plot_data.columns):
+        color = TTS_CHART_COLORS[i % len(TTS_CHART_COLORS)]
+        ax.plot(
+            plot_data.index,
+            plot_data[column],
+            label=str(column),
+            linewidth=2.8,
+            color=color,
+        )
+
+    ax.set_title(
+        chart_name,
+        loc="left",
+        fontsize=18,
+        fontweight="bold",
+        color=TTS_COLORS["dark_blue"],
+        pad=18,
+    )
+
+    ax.set_xlabel(
+        "Vuosi",
+        fontsize=12,
+        fontweight="bold",
+        color=TTS_COLORS["dark_blue"],
+    )
+    ax.tick_params(axis="both", labelsize=10, colors=TTS_COLORS["dark_blue"])
+
+    ax.grid(True, color="#E8EEF9", linewidth=0.8)
+    ax.set_axisbelow(True)
+
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    ax.spines["left"].set_color("#8A8A8A")
+    ax.spines["bottom"].set_color("#8A8A8A")
+
+    # Dynamic legend column count: avoid overly wide legends but keep text visible.
+    n_series = len(plot_data.columns)
+    ncol = 1 if n_series <= 3 else 2 if n_series <= 6 else 3
+
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=ncol,
+        frameon=False,
+        fontsize=10,
+    )
+
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
+
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png", bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
-def charts_to_zip_bytes(chart_exports: list[tuple[str, alt.Chart]]) -> bytes:
+def charts_to_zip_bytes(chart_exports: list[tuple[str, pd.DataFrame]]) -> bytes:
     """Convert all registered charts to a ZIP archive containing PNG files."""
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         used_names = set()
 
-        for chart_name, chart in chart_exports:
+        for chart_name, data in chart_exports:
             base_name = safe_filename(chart_name)
             file_name = f"{base_name}.png"
             counter = 2
@@ -167,7 +227,7 @@ def charts_to_zip_bytes(chart_exports: list[tuple[str, alt.Chart]]) -> bytes:
                 counter += 1
 
             used_names.add(file_name)
-            zf.writestr(file_name, chart_to_png_bytes(chart))
+            zf.writestr(file_name, chart_to_png_bytes(chart_name, data))
 
     zip_buffer.seek(0)
     return zip_buffer.getvalue()
@@ -175,10 +235,10 @@ def charts_to_zip_bytes(chart_exports: list[tuple[str, alt.Chart]]) -> bytes:
 
 
 def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None = None):
-    """Render a TTS-themed interactive multi-line chart.
+    """Render a TTS-themed multi-line chart.
 
-    - Screen version: click legend items to show/hide or highlight lines.
-    - Export version: static PNG with title and full legend labels.
+    Accepts the same wide dataframe format used by st.line_chart:
+    index = x-axis, columns = series.
     """
     if data is None or data.empty:
         st.info("Ei näytettävää dataa.")
@@ -186,58 +246,26 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
 
     chart_data = data.copy()
     x_name = chart_data.index.name or "index"
-    chart_data = chart_data.reset_index().rename(
-        columns={chart_data.index.name or "index": x_name}
-    )
-    long_df = chart_data.melt(
-        id_vars=[x_name],
-        var_name="Muuttuja",
-        value_name="Arvo",
-    )
+    chart_data = chart_data.reset_index().rename(columns={chart_data.index.name or "index": x_name})
+    long_df = chart_data.melt(id_vars=[x_name], var_name="Muuttuja", value_name="Arvo")
 
-    base = alt.Chart(long_df).encode(
-        x=alt.X(f"{x_name}:Q", title="Vuosi"),
-        y=alt.Y("Arvo:Q", title=None),
-        color=alt.Color(
-            "Muuttuja:N",
-            scale=alt.Scale(range=TTS_CHART_COLORS),
-            legend=alt.Legend(
-                title=None,
-                orient="bottom",
-                direction="horizontal",
-                columns=2,
-                labelLimit=500,
-                symbolLimit=500,
-                labelFontSize=13,
-                symbolSize=120,
-                symbolStrokeWidth=4,
-            ),
-        ),
-        tooltip=[
-            alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
-            alt.Tooltip("Muuttuja:N", title="Muuttuja"),
-            alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
-        ],
-    )
-
-    # Screen version: interactive legend.
-    legend_selection = alt.selection_point(
-        fields=["Muuttuja"],
-        bind="legend",
-        toggle=True,
-        empty=True,
-    )
-
-    screen_chart = (
-        base.mark_line(strokeWidth=3)
+    chart = (
+        alt.Chart(long_df)
+        .mark_line(strokeWidth=3)
         .encode(
-            opacity=alt.condition(
-                legend_selection,
-                alt.value(1.0),
-                alt.value(0.12),
-            )
+            x=alt.X(f"{x_name}:Q", title="Vuosi"),
+            y=alt.Y("Arvo:Q", title=None),
+            color=alt.Color(
+                "Muuttuja:N",
+                scale=alt.Scale(range=TTS_CHART_COLORS),
+                legend=alt.Legend(title=None, orient="bottom"),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
+                alt.Tooltip("Muuttuja:N", title="Muuttuja"),
+                alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
+            ],
         )
-        .add_params(legend_selection)
         .properties(height=height)
         .configure_axis(
             labelColor=TTS_COLORS["dark_blue"],
@@ -245,63 +273,15 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
             gridColor="#E8EEF9",
         )
         .configure_view(strokeWidth=0)
-        .configure_legend(
-            labelColor=TTS_COLORS["dark_blue"],
-            titleColor=TTS_COLORS["dark_blue"],
-            labelFont="Arial",
-            titleFont="Arial",
-        )
+        .configure_legend(labelColor=TTS_COLORS["dark_blue"])
     )
-
-    # Export version: static chart. This avoids PNG export problems with interactive legends.
-    export_chart = (
-        base.mark_line(strokeWidth=3)
-        .properties(
-            width=1000,
-            height=height,
-            title=alt.TitleParams(
-                text=chart_name or "",
-                anchor="start",
-                fontSize=24,
-                fontWeight="bold",
-                color=TTS_COLORS["dark_blue"],
-                dy=-8,
-            ),
-        )
-        .configure_axis(
-            labelColor=TTS_COLORS["dark_blue"],
-            titleColor=TTS_COLORS["dark_blue"],
-            gridColor="#E8EEF9",
-            labelFont="Arial",
-            titleFont="Arial",
-            labelFontSize=13,
-            titleFontSize=15,
-            titleFontWeight="bold",
-        )
-        .configure_view(strokeWidth=0)
-        .configure_legend(
-            labelColor=TTS_COLORS["dark_blue"],
-            titleColor=TTS_COLORS["dark_blue"],
-            labelFont="Arial",
-            titleFont="Arial",
-            labelFontSize=13,
-            symbolSize=120,
-            symbolStrokeWidth=4,
-        )
-        .configure_title(
-            font="Arial",
-            color=TTS_COLORS["dark_blue"],
-            fontSize=24,
-            fontWeight="bold",
-            anchor="start",
-        )
-    )
-
     if chart_name:
-        CHART_EXPORTS.append((chart_name, export_chart))
+        CHART_EXPORTS.append((chart_name, data.copy()))
 
-    st.altair_chart(screen_chart, use_container_width=True)
+    st.altair_chart(chart, use_container_width=True)
 
+
+from pathlib import Path
 
 logo_path = Path(__file__).parent / "assets" / "tts_logo.jpg"
 
@@ -328,7 +308,7 @@ with col_title:
         </p>
         """,
         unsafe_allow_html=True,
-    )
+)
 
 RISK_LABELS = {
     "risk_competence": "Osaamisriski",
@@ -351,14 +331,7 @@ with st.sidebar:
     building_types = copy.deepcopy(BUILDING_TYPES)
 
     params["years"] = st.slider("Simulaation pituus, vuotta", 5, 50, int(params["years"]))
-    params["projects_per_year"] = st.slider(
-        "Simuloituja päätöksiä vuodessa",
-        20, 1000, int(params["projects_per_year"]), step=20
-    )
-    st.caption(
-        "Tämä on simulaation otoskoko. Se ei kuvaa Suomen todellista hankemäärää, "
-        "vaan vaikuttaa lähinnä tuloskäyrien satunnaisvaihteluun."
-    )
+    params["projects_per_year"] = st.slider("Simuloituja rakennushankkeita vuodessa", 20, 500, int(params["projects_per_year"]), step=10)
     params["random_seed"] = st.number_input("Satunnaissiemen", value=int(params["random_seed"]), step=1)
 
     st.divider()
@@ -440,18 +413,6 @@ with st.sidebar:
 
     with st.expander("Materiaalivirrat ja viennin houkuttelevuus"):
         st.caption("Nämä kuvaavat, kuinka paljon kotimainen puurakentaminen saa käyttöönsä rakentamiseen soveltuvaa puutuotekapasiteettia suhteessa vientiin, investointeihin ja kestävään raaka-ainerajaan.")
-        params["annual_market_volume_index"] = st.slider(
-            "Todellisen markkinavolyymin indeksi",
-            0.25, 2.00, float(params.get("annual_market_volume_index", 1.00)), 0.05
-        )
-        params["wood_project_material_intensity"] = st.slider(
-            "Puuhankkeen materiaalikysyntäkerroin",
-            0.25, 2.00, float(params.get("wood_project_material_intensity", 1.00)), 0.05
-        )
-        params["hybrid_project_material_intensity"] = st.slider(
-            "Hybridihankkeen materiaalikysyntäkerroin",
-            0.10, 1.50, float(params.get("hybrid_project_material_intensity", 0.50)), 0.05
-        )
         params["max_material_capacity"] = st.slider(
             "Teollisen puutuotekapasiteetin realistinen yläraja",
             0.10, 1.00, float(params.get("max_material_capacity", 0.75)), 0.01
@@ -618,60 +579,11 @@ history, projects, segments = run_model_cached(params_tuple, building_types_for_
 latest = history.iloc[-1]
 
 c1, c2, c3, c4, c5 = st.columns(5)
-
-c1.metric(
-    "Puun osuus",
-    f"{latest['wood_share']*100:.1f} %",
-    help=(
-        "Puun osuus simuloidun markkinan lopputilanteessa. "
-        "Arvo kuvaa puun markkinaosuutta mallin viimeisenä vuonna."
-    ),
-)
-
-c2.metric(
-    "Puu + hybridi",
-    f"{latest['wood_like_share']*100:.1f} %",
-    help=(
-        "Puun ja hybridihankkeiden yhdistetty vaikutus. "
-        "Hybridihankkeet lasketaan mallissa puolikkaana puumaisena kysyntänä, "
-        "koska ne käyttävät puutuotteita mutta eivät ole kokonaan puurakenteisia."
-    ),
-)
-
-c3.metric(
-    "Luottamus puuhun",
-    f"{latest['trust_in_wood']:.2f}",
-    help=(
-        "Kuvaa rakennusmarkkinan koettua luottamusta puurakentamisen hallittavuuteen. "
-        "Arvo ei tarkoita, että kaikki luottaisivat puuhun, vaan että riski, kokemus, "
-        "onnistuneet hankkeet ja järjestelmän vakiintuminen ovat parantaneet puun asemaa."
-    ),
-)
-
-c4.metric(
-    "Puutuotetoimituskyky",
-    f"{latest['supplier_capacity']:.2f}",
-    help=(
-        "Kuvaa puutuoteteollisuuden ja toimitusketjun kykyä palvella puurakentamisen kysyntää. "
-        "Arvoon vaikuttavat kapasiteetti, kysyntä, investointituki, klusterit ja oppiminen. "
-        "Kyse on normalisoidusta indeksistä, ei fyysisestä kuutiometrimäärästä."
-    ),
-)
-
-c5.metric(
-    "Materiaalipullonkaula",
-    f"{latest['material_bottleneck']:.2f}",
-    help=(
-        "Kuvaa tilannetta, jossa puurakentamisen skaalattu materiaalikysyntä ylittää "
-        "rakentamiseen soveltuvan puutuotekapasiteetin. Mitä suurempi arvo, sitä enemmän "
-        "pullonkaula nostaa kustannusepävarmuutta ja toimitusketjuriskiä."
-    ),
-)
-
-st.caption(
-    "Mittarit ovat normalisoituja malliarvoja ja viimeisen simulaatiovuoden tuloksia. "
-    "Ne soveltuvat parhaiten skenaarioiden vertailuun, eivät suoriksi ennusteiksi."
-)
+c1.metric("Puun osuus lopussa", f"{latest['wood_share']*100:.1f} %")
+c2.metric("Puu + hybridi lopussa", f"{latest['wood_like_share']*100:.1f} %")
+c3.metric("Luottamus puuhun", f"{latest['trust_in_wood']:.2f}")
+c4.metric("Puutuoteteollinen toimituskyvykkyys", f"{latest['supplier_capacity']:.2f}")
+c5.metric("Materiaalipullonkaula", f"{latest['material_bottleneck']:.2f}")
 
 st.subheader("Koko simuloidun markkinan markkinaosuudet")
 market_df = history.set_index("year")[["wood_share", "hybrid_share", "concrete_share"]]
@@ -693,7 +605,7 @@ tts_line_chart(policy_df, height=220, chart_name="Hiiliohjauksen ja julkisen han
 
 st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
 material_df = history.set_index("year")[[
-    "wood_material_demand",
+    "wood_demand_pressure",
     "material_capacity",
     "effective_material_capacity_limit",
     "material_bottleneck",
@@ -701,7 +613,7 @@ material_df = history.set_index("year")[[
     "domestic_allocation_factor",
 ]]
 material_df = material_df.rename(columns={
-    "wood_material_demand": "Skaalattu puutuotekysyntä",
+    "wood_demand_pressure": "Puutuotekysyntäpaine",
     "material_capacity": "Rakentamiseen soveltuva puutuotekapasiteetti",
     "effective_material_capacity_limit": "Efektiivinen kapasiteetin yläraja",
     "material_bottleneck": "Materiaalipullonkaula",
@@ -838,6 +750,29 @@ with st.expander("Näytä rakennustyyppikohtainen data"):
 with st.expander("Näytä hankeloki"):
     st.dataframe(projects, use_container_width=True)
 
+st.subheader("Tulkinta")
+st.markdown(
+    """
+Versio 0.5 jakaa tilaajien riskikokemuksen kuuteen osaan:
+
+- **osaamisriski**: onko suunnittelijoilla, urakoitsijoilla ja työvoimalla riittävä osaaminen,
+- **sääntely- ja paloturvallisuusriski**: ovatko lupakäytännöt, paloturvallisuus ja hyväksyntäprosessi ennakoitavia,
+- **kustannusepävarmuus**: kuinka paljon hinta- ja riskipreemioita liittyy puuhun,
+- **toimitusketjuriski**: riittääkö kapasiteetti ja onko toimittajakenttä luotettava,
+- **kosteus- ja tekninen riski**: teknisen toteutuksen, kosteudenhallinnan ja kestävyyden epävarmuus,
+- **markkina-/hyväksyttävyysriski**: tilaajien, käyttäjien, sijoittajien ja markkinan hyväksyntä.
+
+Tämä tekee näkyväksi, että puurakentamisen jarru ei ole vain yksi 'riski', vaan useiden riskien yhdistelmä. Eri skenaariot voivat pienentää eri riskikomponentteja eri tahtiin.
+
+Versio 0.7 lisää tähän materiaalivirran rajoitteen: jos puutuotekysyntä kasvaa nopeammin kuin rakentamiseen soveltuva kapasiteetti, kustannusepävarmuus ja toimitusketjuriski kasvavat. Vientimarkkinan houkuttelevuus voi hidastaa kapasiteetin ohjautumista kotimaiseen rakentamiseen.
+"""
+)
+
+st.info(
+    "Version 0.9: malliin lisättiin ajassa kiristyvä hiiliohjaus ja tarkennettiin julkisen hankinnan rakennustyyppikohtaista vaikutusta.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
+)
+
 
 st.subheader("Lataa kaaviot")
 
@@ -854,10 +789,10 @@ if CHART_EXPORTS:
         chart_names,
     )
 
-    selected_chart = dict(CHART_EXPORTS)[selected_chart_name]
+    selected_chart_data = dict(CHART_EXPORTS)[selected_chart_name]
 
     try:
-        selected_png = chart_to_png_bytes(selected_chart)
+        selected_png = chart_to_png_bytes(selected_chart_name, selected_chart_data)
 
         st.download_button(
             label="Lataa valittu kaavio PNG-kuvana",
@@ -868,7 +803,7 @@ if CHART_EXPORTS:
     except Exception:
         st.warning(
             "Valitun kaavion PNG-kuvan muodostaminen ei onnistunut. "
-            "Tarkista, että requirements.txt sisältää rivin `vl-convert-python`."
+            "Tarkista, että requirements.txt sisältää rivin `matplotlib`."
         )
 
     try:
@@ -883,7 +818,7 @@ if CHART_EXPORTS:
     except Exception:
         st.warning(
             "Kaikkien kaavioiden ZIP-paketin muodostaminen ei onnistunut. "
-            "Tarkista, että requirements.txt sisältää rivin `vl-convert-python`."
+            "Tarkista, että requirements.txt sisältää rivin `matplotlib`."
         )
 else:
     st.info("Kaavioita ei ole vielä muodostettu ladattavaksi.")
