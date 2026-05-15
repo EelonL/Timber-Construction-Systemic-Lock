@@ -1,5 +1,16 @@
 # TTS PuuSiirtymä
 
+## Version 0.9.1
+
+Visuaalinen päivitys:
+
+- Lisättiin TTS PowerPoint 2026 -pohjasta poimitut teemavärit.
+- Käyttöliittymän CSS käyttää TTS-värejä: sininen `#1973FF`, tumma sininen `#0C397F`, turkoosi `#00E1BE`, vaalea turkoosi `#80F0DF`, vaaleansininen `#8CB9FF`, pinkki `#FF75E6`, oranssi `#FF9533` ja vaaleanharmaa `#EEEEEE`.
+- Fonttiperheeksi asetettiin `Satoshi`, jos se on käyttäjän selaimessa saatavilla; muuten käytetään Aptos/Segoe UI/Arial -varafontteja.
+- `st.line_chart`-kuvaajat korvattiin Altair-kuvaajilla, jotta sarjavärit noudattavat TTS-palettia.
+- Lisättiin `.streamlit/config.toml`, jossa Streamlit-teeman perusvärit on asetettu TTS-ilmeeseen.
+- Mukana ovat myös klusterivaikutuksen maltillistukset, joista keskusteltiin version 0.9 jälkeen.
+
 ## Version 0.9
 
 Uutta:

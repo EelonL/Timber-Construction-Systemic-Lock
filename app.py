@@ -1,6 +1,7 @@
 import copy
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 from model import WoodConstructionLockInModel
 from scenarios import SCENARIOS, get_params_for_scenario
@@ -13,10 +14,166 @@ st.set_page_config(
     layout="wide",
 )
 
+# --- TTS visual theme extracted from "TTS PowerPoint 2026.potx" ---
+TTS_COLORS = {
+    "blue": "#1973FF",
+    "light_blue": "#8CB9FF",
+    "turquoise": "#00E1BE",
+    "light_turquoise": "#80F0DF",
+    "pink": "#FF75E6",
+    "dark_blue": "#0C397F",
+    "orange": "#FF9533",
+    "light_gray": "#EEEEEE",
+    "white": "#FFFFFF",
+}
+TTS_CHART_COLORS = [
+    TTS_COLORS["blue"],
+    TTS_COLORS["turquoise"],
+    TTS_COLORS["orange"],
+    TTS_COLORS["pink"],
+    TTS_COLORS["dark_blue"],
+    TTS_COLORS["light_blue"],
+    TTS_COLORS["light_turquoise"],
+]
+
+st.markdown(
+    f"""
+    <style>
+    :root {{
+        --tts-blue: {TTS_COLORS["blue"]};
+        --tts-light-blue: {TTS_COLORS["light_blue"]};
+        --tts-turquoise: {TTS_COLORS["turquoise"]};
+        --tts-light-turquoise: {TTS_COLORS["light_turquoise"]};
+        --tts-pink: {TTS_COLORS["pink"]};
+        --tts-dark-blue: {TTS_COLORS["dark_blue"]};
+        --tts-orange: {TTS_COLORS["orange"]};
+        --tts-light-gray: {TTS_COLORS["light_gray"]};
+    }}
+
+    html, body, [class*="css"] {{
+        font-family: "Satoshi", "Satoshi Medium", "Aptos", "Segoe UI", Arial, sans-serif;
+        color: var(--tts-dark-blue);
+    }}
+
+    .stApp {{
+        background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFF 100%);
+    }}
+
+    h1, h2, h3 {{
+        color: var(--tts-dark-blue);
+        letter-spacing: -0.02em;
+    }}
+
+    h1 {{
+        font-family: "Satoshi Medium", "Satoshi", "Aptos Display", "Segoe UI", Arial, sans-serif;
+        font-weight: 700;
+    }}
+
+    section[data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, #F3F7FF 0%, #FFFFFF 100%);
+        border-right: 1px solid #DDE9FF;
+    }}
+
+    div[data-testid="stMetric"] {{
+        background: #FFFFFF;
+        border: 1px solid #DDE9FF;
+        border-left: 5px solid var(--tts-blue);
+        border-radius: 16px;
+        padding: 14px 16px;
+        box-shadow: 0 6px 18px rgba(12, 57, 127, 0.06);
+    }}
+
+    div[data-testid="stMetricValue"] {{
+        color: var(--tts-blue);
+        font-weight: 700;
+    }}
+
+    div[data-testid="stExpander"] {{
+        border: 1px solid #DDE9FF;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #FFFFFF;
+    }}
+
+    .stButton > button {{
+        background: var(--tts-blue);
+        color: white;
+        border: 0;
+        border-radius: 999px;
+        font-weight: 700;
+    }}
+
+    .stButton > button:hover {{
+        background: var(--tts-dark-blue);
+        color: white;
+    }}
+
+    .stSlider [data-baseweb="slider"] > div {{
+        color: var(--tts-blue);
+    }}
+
+    .stDataFrame {{
+        border-radius: 14px;
+        overflow: hidden;
+    }}
+
+    a {{
+        color: var(--tts-blue);
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+def tts_line_chart(data: pd.DataFrame, height: int = 340):
+    """Render a TTS-themed multi-line chart.
+
+    Accepts the same wide dataframe format used by st.line_chart:
+    index = x-axis, columns = series.
+    """
+    if data is None or data.empty:
+        st.info("Ei näytettävää dataa.")
+        return
+
+    chart_data = data.copy()
+    x_name = chart_data.index.name or "index"
+    chart_data = chart_data.reset_index().rename(columns={chart_data.index.name or "index": x_name})
+    long_df = chart_data.melt(id_vars=[x_name], var_name="Muuttuja", value_name="Arvo")
+
+    chart = (
+        alt.Chart(long_df)
+        .mark_line(strokeWidth=3)
+        .encode(
+            x=alt.X(f"{x_name}:Q", title="Vuosi"),
+            y=alt.Y("Arvo:Q", title=None),
+            color=alt.Color(
+                "Muuttuja:N",
+                scale=alt.Scale(range=TTS_CHART_COLORS),
+                legend=alt.Legend(title=None, orient="bottom"),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
+                alt.Tooltip("Muuttuja:N", title="Muuttuja"),
+                alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
+            ],
+        )
+        .properties(height=height)
+        .configure_axis(
+            labelColor=TTS_COLORS["dark_blue"],
+            titleColor=TTS_COLORS["dark_blue"],
+            gridColor="#E8EEF9",
+        )
+        .configure_view(strokeWidth=0)
+        .configure_legend(labelColor=TTS_COLORS["dark_blue"])
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.9 lisää ajassa kiristyvän hiiliohjauksen ja tarkentaa julkisen hankinnan rakennustyyppikohtaista vaikutusta."
+    "Versio 0.9.1 käyttää TTS:n teemavärejä ja Satoshi-fonttiperhettä, jos fontti on saatavilla selaimessa."
 )
 
 RISK_LABELS = {
@@ -301,7 +458,7 @@ market_df = market_df.rename(columns={
     "hybrid_share": "Hybridi",
     "concrete_share": "Betoni"
 })
-st.line_chart(market_df)
+tts_line_chart(market_df)
 
 st.subheader("Hiiliohjauksen ja julkisen hankinnan ohjaus")
 policy_df = history.set_index("year")[[
@@ -310,7 +467,7 @@ policy_df = history.set_index("year")[[
 policy_df = policy_df.rename(columns={
     "effective_carbon_policy_strength": "Efektiivinen hiiliohjauksen voimakkuus",
 })
-st.line_chart(policy_df)
+tts_line_chart(policy_df, height=220)
 
 st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
 material_df = history.set_index("year")[[
@@ -329,7 +486,7 @@ material_df = material_df.rename(columns={
     "material_capacity_utilization": "Materiaalikapasiteetin käyttöaste",
     "domestic_allocation_factor": "Kotimaan allokaatiokerroin",
 })
-st.line_chart(material_df)
+tts_line_chart(material_df)
 
 st.subheader("Koulutuksen vetovoima ja osaajaputki")
 education_df = history.set_index("year")[[
@@ -348,20 +505,20 @@ education_df = education_df.rename(columns={
     "vocational_workforce": "Ammatillinen osaajapohja",
     "engineering_workforce": "Insinööri-/suunnitteluosaajapohja",
 })
-st.line_chart(education_df)
+tts_line_chart(education_df)
 
 st.subheader("Puun osuus rakennustyypeittäin")
 wood_pivot = segments.pivot(index="year", columns="building_type", values="wood_share")
-st.line_chart(wood_pivot)
+tts_line_chart(wood_pivot)
 
 st.subheader("Puu + hybridi rakennustyypeittäin")
 wood_like_pivot = segments.pivot(index="year", columns="building_type", values="wood_like_share")
-st.line_chart(wood_like_pivot)
+tts_line_chart(wood_like_pivot)
 
 st.subheader("Riskikomponentit koko markkinassa")
 risk_cols = list(RISK_LABELS.keys())
 risk_df = history.set_index("year")[risk_cols].rename(columns=RISK_LABELS)
-st.line_chart(risk_df)
+tts_line_chart(risk_df)
 
 st.subheader("Riskikomponentit rakennustyypeittäin")
 selected_bt = st.selectbox(
@@ -369,7 +526,7 @@ selected_bt = st.selectbox(
     sorted(segments["building_type"].unique())
 )
 seg_risk = segments[segments["building_type"] == selected_bt].set_index("year")[risk_cols].rename(columns=RISK_LABELS)
-st.line_chart(seg_risk)
+tts_line_chart(seg_risk)
 
 st.subheader("Rakennustyyppien lopputilanne")
 last_year = segments["year"].max()
@@ -435,7 +592,7 @@ state_df = state_df.rename(columns={
     "workforce": "Osaajapohja yhteensä",
     "concrete_lock_in": "Betonijärjestelmän lukkiutuminen",
 })
-st.line_chart(state_df)
+tts_line_chart(state_df)
 
 st.subheader("Puun kustannus-, riski- ja epäonnistumissignaalit")
 basic_risk_df = history.set_index("year")[[
@@ -448,7 +605,7 @@ basic_risk_df = basic_risk_df.rename(columns={
     "avg_wood_perceived_risk": "Koettu kokonaisriski",
     "wood_failure_rate": "Epäonnistumisaste",
 })
-st.line_chart(basic_risk_df)
+tts_line_chart(basic_risk_df)
 
 with st.expander("Näytä vuosittainen data"):
     st.dataframe(history, use_container_width=True)

@@ -30,7 +30,7 @@ SCENARIOS = {
             "public_procurement_strength": 0.65,
             "supplier_investment_support": 0.75,
             "standardization_investment": 0.70,
-            "cluster_strength": 0.45,
+            "cluster_strength": 0.30,
             "wood_experiment_floor": 0.015,
             "hybrid_experiment_floor": 0.025,
         },
@@ -49,7 +49,7 @@ SCENARIOS = {
     "Alueellinen klusteri": {
         "description": "Tilaajat, viranomaiset, oppilaitokset, suunnittelijat ja toimittajat oppivat samassa ekosysteemissä.",
         "updates": {
-            "cluster_strength": 0.80,
+            "cluster_strength": 0.50,
             "standardization_investment": 0.65,
             "supplier_investment_support": 0.55,
             "education_investment": 0.65,
