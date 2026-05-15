@@ -334,7 +334,7 @@ class WoodConstructionLockInModel(MesaModel):
         )
 
         policy_gain = (
-            (0.01 * p["cluster_strength"] + 0.004 * self.effective_carbon_policy_strength)
+            (0.005 * p["cluster_strength"] + 0.004 * self.effective_carbon_policy_strength)
             * trust_headroom
         )
 
@@ -350,7 +350,7 @@ class WoodConstructionLockInModel(MesaModel):
             trust_ceiling
         )
 
-        effective_learning_rate = p["learning_rate"] * (1 + 0.5 * p.get("cluster_strength", 0.10))
+        effective_learning_rate = p["learning_rate"] * (1 + 0.25 * p.get("cluster_strength", 0.10))
         competence_learning = effective_learning_rate * wood_like_share
 
         # Engineering workforce supports design/system competence.
@@ -374,7 +374,7 @@ class WoodConstructionLockInModel(MesaModel):
             self.standardization
             + p["standardization_learning_rate"] * wood_like_share
             + 0.04 * p["standardization_investment"]
-            + 0.03 * p["cluster_strength"]
+            + 0.015 * p["cluster_strength"]
             - 0.008
         )
 

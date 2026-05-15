@@ -386,14 +386,14 @@ class EducationAgent(BaseAgent):
             m.youth_attractiveness
             + p.get("youth_attractiveness_success_impact", 0.020) * success_signal
             + 0.010 * p.get("education_investment", 0.30)
-            + 0.006 * p.get("cluster_strength", 0.10)
+            + 0.003 * p.get("cluster_strength", 0.10)
             - p.get("attractiveness_decline_pressure", 0.010)
         )
         m.adult_attractiveness = clamp(
             m.adult_attractiveness
             + p.get("adult_attractiveness_success_impact", 0.030) * success_signal
             + 0.012 * p.get("education_investment", 0.30)
-            + 0.008 * p.get("cluster_strength", 0.10)
+            + 0.004 * p.get("cluster_strength", 0.10)
             - 0.6 * p.get("attractiveness_decline_pressure", 0.010)
         )
 
