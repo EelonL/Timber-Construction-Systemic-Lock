@@ -1,8 +1,13 @@
 from pathlib import Path
 import copy
+import io
+import re
+import zipfile
+
 import pandas as pd
 import streamlit as st
 import altair as alt
+import vl_convert as vlc
 
 from model import WoodConstructionLockInModel
 from scenarios import SCENARIOS, get_params_for_scenario
@@ -127,11 +132,54 @@ st.markdown(
 )
 
 
-def tts_line_chart(data: pd.DataFrame, height: int = 340):
+
+CHART_EXPORTS = []
+
+
+def safe_filename(name: str) -> str:
+    """Make a safe filename from a chart title."""
+    name = name.lower().strip()
+    name = name.replace("ä", "a").replace("ö", "o").replace("å", "a")
+    name = re.sub(r"[^a-z0-9]+", "_", name)
+    return name.strip("_") or "kaavio"
+
+
+def chart_to_png_bytes(chart: alt.Chart) -> bytes:
+    """Convert an Altair/Vega-Lite chart to PNG bytes."""
+    spec = chart.to_dict()
+    return vlc.vegalite_to_png(spec, scale=2)
+
+
+def charts_to_zip_bytes(chart_exports: list[tuple[str, alt.Chart]]) -> bytes:
+    """Convert all registered charts to a ZIP archive containing PNG files."""
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+
+        for chart_name, chart in chart_exports:
+            base_name = safe_filename(chart_name)
+            file_name = f"{base_name}.png"
+            counter = 2
+
+            while file_name in used_names:
+                file_name = f"{base_name}_{counter}.png"
+                counter += 1
+
+            used_names.add(file_name)
+            zf.writestr(file_name, chart_to_png_bytes(chart))
+
+    zip_buffer.seek(0)
+    return zip_buffer.getvalue()
+
+
+
+def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None = None):
     """Render a TTS-themed interactive multi-line chart.
 
     - Click legend items to show/hide or highlight lines.
     - Legend is arranged in columns to reduce truncated labels.
+    - If chart_name is given, the chart is registered for PNG/ZIP export.
     """
     if data is None or data.empty:
         st.info("Ei näytettävää dataa.")
@@ -204,6 +252,9 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
             titleFont="Satoshi, Aptos, Segoe UI, Arial",
         )
     )
+
+    if chart_name:
+        CHART_EXPORTS.append((chart_name, chart))
 
     st.altair_chart(chart, use_container_width=True)
 
@@ -585,7 +636,7 @@ market_df = market_df.rename(columns={
     "hybrid_share": "Hybridi",
     "concrete_share": "Betoni"
 })
-tts_line_chart(market_df)
+tts_line_chart(market_df, chart_name="Koko simuloidun markkinan markkinaosuudet")
 
 st.subheader("Hiiliohjauksen ja julkisen hankinnan ohjaus")
 policy_df = history.set_index("year")[[
@@ -594,7 +645,7 @@ policy_df = history.set_index("year")[[
 policy_df = policy_df.rename(columns={
     "effective_carbon_policy_strength": "Efektiivinen hiiliohjauksen voimakkuus",
 })
-tts_line_chart(policy_df, height=220)
+tts_line_chart(policy_df, height=220, chart_name="Hiiliohjauksen ja julkisen hankinnan ohjaus")
 
 st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
 material_df = history.set_index("year")[[
@@ -613,7 +664,7 @@ material_df = material_df.rename(columns={
     "material_capacity_utilization": "Materiaalikapasiteetin käyttöaste",
     "domestic_allocation_factor": "Kotimaan allokaatiokerroin",
 })
-tts_line_chart(material_df)
+tts_line_chart(material_df, chart_name="Materiaalivirrat ja puutuotekapasiteetin rajoite")
 
 st.subheader("Koulutuksen vetovoima ja osaajaputki")
 education_df = history.set_index("year")[[
@@ -632,20 +683,20 @@ education_df = education_df.rename(columns={
     "vocational_workforce": "Ammatillinen osaajapohja",
     "engineering_workforce": "Insinööri-/suunnitteluosaajapohja",
 })
-tts_line_chart(education_df)
+tts_line_chart(education_df, chart_name="Koulutuksen vetovoima ja osaajaputki")
 
 st.subheader("Puun osuus rakennustyypeittäin")
 wood_pivot = segments.pivot(index="year", columns="building_type", values="wood_share")
-tts_line_chart(wood_pivot)
+tts_line_chart(wood_pivot, chart_name="Puun osuus rakennustyypeittäin")
 
 st.subheader("Puu + hybridi rakennustyypeittäin")
 wood_like_pivot = segments.pivot(index="year", columns="building_type", values="wood_like_share")
-tts_line_chart(wood_like_pivot)
+tts_line_chart(wood_like_pivot, chart_name="Puu ja hybridi rakennustyypeittäin")
 
 st.subheader("Riskikomponentit koko markkinassa")
 risk_cols = list(RISK_LABELS.keys())
 risk_df = history.set_index("year")[risk_cols].rename(columns=RISK_LABELS)
-tts_line_chart(risk_df)
+tts_line_chart(risk_df, chart_name="Riskikomponentit koko markkinassa")
 
 st.subheader("Riskikomponentit rakennustyypeittäin")
 selected_bt = st.selectbox(
@@ -653,7 +704,7 @@ selected_bt = st.selectbox(
     sorted(segments["building_type"].unique())
 )
 seg_risk = segments[segments["building_type"] == selected_bt].set_index("year")[risk_cols].rename(columns=RISK_LABELS)
-tts_line_chart(seg_risk)
+tts_line_chart(seg_risk, chart_name=f"Riskikomponentit rakennustyypeittäin - {selected_bt}")
 
 st.subheader("Rakennustyyppien lopputilanne")
 last_year = segments["year"].max()
@@ -719,7 +770,7 @@ state_df = state_df.rename(columns={
     "workforce": "Osaajapohja yhteensä",
     "concrete_lock_in": "Betonijärjestelmän lukkiutuminen",
 })
-tts_line_chart(state_df)
+tts_line_chart(state_df, chart_name="Systeemin tilamuuttujat")
 
 st.subheader("Puun kustannus-, riski- ja epäonnistumissignaalit")
 basic_risk_df = history.set_index("year")[[
@@ -732,7 +783,7 @@ basic_risk_df = basic_risk_df.rename(columns={
     "avg_wood_perceived_risk": "Koettu kokonaisriski",
     "wood_failure_rate": "Epäonnistumisaste",
 })
-tts_line_chart(basic_risk_df)
+tts_line_chart(basic_risk_df, chart_name="Puun kustannus-, riski- ja epäonnistumissignaalit")
 
 with st.expander("Näytä vuosittainen data"):
     st.dataframe(history, use_container_width=True)
@@ -742,3 +793,54 @@ with st.expander("Näytä rakennustyyppikohtainen data"):
 
 with st.expander("Näytä hankeloki"):
     st.dataframe(projects, use_container_width=True)
+
+
+st.subheader("Lataa kaaviot")
+
+st.caption(
+    "Voit ladata yksittäisen kaavion PNG-kuvana tai kaikki kaaviot ZIP-pakettina. "
+    "Kuvat muodostetaan nykyisillä skenaario- ja parametriasetuksilla."
+)
+
+if CHART_EXPORTS:
+    chart_names = [name for name, _ in CHART_EXPORTS]
+
+    selected_chart_name = st.selectbox(
+        "Valitse ladattava kaavio",
+        chart_names,
+    )
+
+    selected_chart = dict(CHART_EXPORTS)[selected_chart_name]
+
+    try:
+        selected_png = chart_to_png_bytes(selected_chart)
+
+        st.download_button(
+            label="Lataa valittu kaavio PNG-kuvana",
+            data=selected_png,
+            file_name=f"{safe_filename(selected_chart_name)}.png",
+            mime="image/png",
+        )
+    except Exception:
+        st.warning(
+            "Valitun kaavion PNG-kuvan muodostaminen ei onnistunut. "
+            "Tarkista, että requirements.txt sisältää rivin `vl-convert-python`."
+        )
+
+    try:
+        all_charts_zip = charts_to_zip_bytes(CHART_EXPORTS)
+
+        st.download_button(
+            label="Lataa kaikki kaaviot ZIP-pakettina",
+            data=all_charts_zip,
+            file_name="puurakentamisen_systeeminen_malli_kaaviot.zip",
+            mime="application/zip",
+        )
+    except Exception:
+        st.warning(
+            "Kaikkien kaavioiden ZIP-paketin muodostaminen ei onnistunut. "
+            "Tarkista, että requirements.txt sisältää rivin `vl-convert-python`."
+        )
+else:
+    st.info("Kaavioita ei ole vielä muodostettu ladattavaksi.")
+
