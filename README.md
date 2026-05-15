@@ -1,5 +1,12 @@
 # TTS PuuSiirtymä
 
+## Version 0.7.1
+
+Korjaus:
+
+- Lisättiin `wood_demand_pressure` vuosittaiseen `history`-dataan.
+- Tämä korjaa Streamlitin KeyError-virheen materiaalivirtojen kuvaajassa.
+
 ## Version 0.7
 
 Uutta:

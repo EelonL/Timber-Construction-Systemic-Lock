@@ -488,6 +488,7 @@ class WoodConstructionLockInModel(MesaModel):
             "hybrid_share": self.hybrid_market_share,
             "concrete_share": self.concrete_market_share,
             "wood_like_share": self.wood_demand_pressure,
+            "wood_demand_pressure": self.wood_demand_pressure,
             "trust_in_wood": self.trust_in_wood,
             "design_competence": self.design_competence,
             "contractor_competence": self.contractor_competence,
