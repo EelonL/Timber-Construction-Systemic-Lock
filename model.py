@@ -253,13 +253,16 @@ class WoodConstructionLockInModel(MesaModel):
             trust_ceiling
         )
 
-        competence_learning = p["learning_rate"] * wood_like_share
+        effective_learning_rate = p["learning_rate"] * (1 + 0.5 * p["cluster_strength"])
+        competence_learning = effective_learning_rate * wood_like_share
+        
         self.design_competence = clamp(
             self.design_competence
             + competence_learning
             + 0.4 * competence_learning * self.workforce
             - p["competence_decay"]
         )
+        
         self.contractor_competence = clamp(
             self.contractor_competence
             + 0.85 * competence_learning

@@ -144,8 +144,8 @@ DEFAULT_PARAMS = {
 
     # Initial system states, 0..1
     "initial_trust_in_wood": 0.30,
-    "initial_design_competence": 0.28,
-    "initial_contractor_competence": 0.25,
+    "initial_design_competence": 0.30,
+    "initial_contractor_competence": 0.24,
     "initial_supplier_capacity": 0.15,
     "initial_standardization": 0.22,
     "initial_regulatory_routine": 0.22,
@@ -192,11 +192,11 @@ DEFAULT_PARAMS = {
     "cluster_strength": 0.10,
 
     # Learning and forgetting
-    "learning_rate": 0.08,
+    "learning_rate": 0.06,
     "standardization_learning_rate": 0.06,
     "trust_success_impact": 0.04,
     "trust_failure_impact": 0.14,
-    "competence_decay": 0.006,
+    "competence_decay": 0.008,
     "lock_in_decay_from_wood": 0.025,
 
     # Project outcome probabilities; can be modified by building type
