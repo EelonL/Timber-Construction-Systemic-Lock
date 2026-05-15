@@ -71,6 +71,10 @@ def calculate_risk_components(
     segment_ref = model.segment_reference_stock.get(building_type, 0.0)
     shortage = max(0.0, model.wood_demand_pressure - model.supplier_capacity)
 
+    material_bottleneck = getattr(model, "material_bottleneck", 0.0)
+    material_price_pressure = getattr(model, "material_price_pressure", 0.0)
+    material_risk_pressure = getattr(model, "material_risk_pressure", 0.0)
+
     # Hybrid is treated as a transitional solution: lower risk than pure wood,
     # but still affected by the same system variables.
     if material == "hybrid":
@@ -102,11 +106,14 @@ def calculate_risk_components(
             base.get("cost_uncertainty", 0.50)
             * (1 - 0.40 * model.standardization - 0.15 * model.trust_in_wood)
             + max(0.0, cost_premium) * 1.15
+            + material_price_pressure
         ),
         "supply_chain": (
             base.get("supply_chain", 0.50)
             * (1 - 0.60 * model.supplier_capacity)
             + shortage * bt.get("capacity_intensity", 1.0) * 0.65
+            + material_risk_pressure
+            + material_bottleneck * 0.35
         ),
         "moisture_technical": (
             base.get("moisture_technical", 0.50)
@@ -196,11 +203,14 @@ class DeveloperAgent(BaseAgent):
         shortage = max(0.0, m.wood_demand_pressure - m.supplier_capacity)
         intensity = bt.get("capacity_intensity", 1.0)
 
+        material_price_pressure = getattr(m, "material_price_pressure", 0.0)
+
         if material == "wood":
             return max(
                 -0.05,
                 bt.get("wood_base_cost_premium", p["wood_base_cost_premium"])
                 + p["capacity_shortage_penalty"] * shortage * intensity
+                + material_price_pressure
                 - 0.10 * m.standardization
                 - 0.06 * m.design_competence
                 - 0.05 * m.contractor_competence,
@@ -210,6 +220,7 @@ class DeveloperAgent(BaseAgent):
                 -0.03,
                 p["hybrid_base_cost_premium"]
                 + 0.45 * p["capacity_shortage_penalty"] * shortage * intensity
+                + 0.55 * material_price_pressure
                 - 0.06 * m.standardization
                 - 0.03 * m.design_competence,
             )

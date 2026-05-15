@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.6 erottaa rakennustyypit ja jakaa tilaajien riskikokemuksen alakomponentteihin. Päätöksenteon satunnaisuutta on maltillistettu."
+    "Versio 0.7 lisää materiaalivirtojen ja puutuotekapasiteetin rajoittavan silmukan."
 )
 
 RISK_LABELS = {
@@ -75,8 +75,12 @@ with st.sidebar:
     st.header("Lähtötilanne")
 
     params["initial_supplier_capacity"] = st.slider(
-        "Puutuoteteollinen kapasiteetti alussa",
+        "Puutuoteteollinen toimituskyvykkyys alussa",
         0.01, 1.0, float(params["initial_supplier_capacity"]), 0.01
+    )
+    params["initial_material_capacity"] = st.slider(
+        "Rakentamiseen soveltuva puutuotekapasiteetti alussa",
+        0.01, 1.0, float(params.get("initial_material_capacity", 0.35)), 0.01
     )
     params["initial_concrete_lock_in"] = st.slider(
         "Betonijärjestelmän lukkiutuminen alussa",
@@ -95,6 +99,45 @@ with st.sidebar:
         params["trust_decay"] = st.slider(
             "Luottamuksen palautuminen perustasoa kohti",
             0.000, 0.050, float(params.get("trust_decay", 0.012)), 0.001
+        )
+
+    with st.expander("Materiaalivirrat ja viennin houkuttelevuus"):
+        st.caption("Nämä kuvaavat, kuinka paljon kotimainen puurakentaminen saa käyttöönsä rakentamiseen soveltuvaa puutuotekapasiteettia suhteessa vientiin, investointeihin ja kestävään raaka-ainerajaan.")
+        params["max_material_capacity"] = st.slider(
+            "Teollisen puutuotekapasiteetin realistinen yläraja",
+            0.10, 1.00, float(params.get("max_material_capacity", 0.75)), 0.01
+        )
+        params["raw_material_limit"] = st.slider(
+            "Raaka-aineen / kestävän puunkäytön yläraja",
+            0.10, 1.00, float(params.get("raw_material_limit", 0.90)), 0.01
+        )
+        params["material_capacity_growth_rate"] = st.slider(
+            "Puutuotekapasiteetin kasvunopeus",
+            0.00, 0.15, float(params.get("material_capacity_growth_rate", 0.04)), 0.005
+        )
+        params["material_bottleneck_cost_impact"] = st.slider(
+            "Pullonkaulan vaikutus kustannuksiin",
+            0.00, 0.60, float(params.get("material_bottleneck_cost_impact", 0.20)), 0.01
+        )
+        params["material_bottleneck_risk_impact"] = st.slider(
+            "Pullonkaulan vaikutus toimitusketjuriskiin",
+            0.00, 0.60, float(params.get("material_bottleneck_risk_impact", 0.25)), 0.01
+        )
+        params["export_market_attractiveness"] = st.slider(
+            "Vientimarkkinan houkuttelevuus",
+            0.00, 1.00, float(params.get("export_market_attractiveness", 0.70)), 0.01
+        )
+        params["domestic_construction_price_premium"] = st.slider(
+            "Kotimaisen rakentamisen maksama lisäarvo / hintapreemio",
+            -0.20, 0.40, float(params.get("domestic_construction_price_premium", 0.00)), 0.01
+        )
+        params["domestic_demand_stability"] = st.slider(
+            "Kotimaisen puurakentamiskysynnän ennustettavuus",
+            0.00, 1.00, float(params.get("domestic_demand_stability", 0.30)), 0.01
+        )
+        params["export_reallocation_sensitivity"] = st.slider(
+            "Viennistä kotimaahan allokoinnin herkkyys",
+            0.00, 1.00, float(params.get("export_reallocation_sensitivity", 0.25)), 0.01
         )
 
     with st.expander("Riskikomponenttien painot"):
@@ -186,11 +229,12 @@ history, projects, segments = run_model_cached(params_tuple, building_types_for_
 
 latest = history.iloc[-1]
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Puun osuus lopussa", f"{latest['wood_share']*100:.1f} %")
 c2.metric("Puu + hybridi lopussa", f"{latest['wood_like_share']*100:.1f} %")
 c3.metric("Luottamus puuhun", f"{latest['trust_in_wood']:.2f}")
-c4.metric("Puutuoteteollinen kapasiteetti", f"{latest['supplier_capacity']:.2f}")
+c4.metric("Puutuoteteollinen toimituskyvykkyys", f"{latest['supplier_capacity']:.2f}")
+c5.metric("Materiaalipullonkaula", f"{latest['material_bottleneck']:.2f}")
 
 st.subheader("Koko simuloidun markkinan markkinaosuudet")
 market_df = history.set_index("year")[["wood_share", "hybrid_share", "concrete_share"]]
@@ -200,6 +244,25 @@ market_df = market_df.rename(columns={
     "concrete_share": "Betoni"
 })
 st.line_chart(market_df)
+
+st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
+material_df = history.set_index("year")[[
+    "wood_demand_pressure",
+    "material_capacity",
+    "effective_material_capacity_limit",
+    "material_bottleneck",
+    "material_capacity_utilization",
+    "domestic_allocation_factor",
+]]
+material_df = material_df.rename(columns={
+    "wood_demand_pressure": "Puutuotekysyntäpaine",
+    "material_capacity": "Rakentamiseen soveltuva puutuotekapasiteetti",
+    "effective_material_capacity_limit": "Efektiivinen kapasiteetin yläraja",
+    "material_bottleneck": "Materiaalipullonkaula",
+    "material_capacity_utilization": "Materiaalikapasiteetin käyttöaste",
+    "domestic_allocation_factor": "Kotimaan allokaatiokerroin",
+})
+st.line_chart(material_df)
 
 st.subheader("Puun osuus rakennustyypeittäin")
 wood_pivot = segments.pivot(index="year", columns="building_type", values="wood_share")
@@ -263,6 +326,7 @@ st.subheader("Systeemin tilamuuttujat")
 state_df = history.set_index("year")[[
     "trust_in_wood",
     "supplier_capacity",
+    "material_capacity",
     "design_competence",
     "contractor_competence",
     "standardization",
@@ -272,7 +336,8 @@ state_df = history.set_index("year")[[
 ]]
 state_df = state_df.rename(columns={
     "trust_in_wood": "Luottamus puuhun",
-    "supplier_capacity": "Puutuoteteollinen kapasiteetti",
+    "supplier_capacity": "Puutuoteteollinen toimituskyvykkyys",
+    "material_capacity": "Rakentamiseen soveltuva puutuotekapasiteetti",
     "design_competence": "Suunnitteluosaaminen",
     "contractor_competence": "Urakointi-/työmaaosaaminen",
     "standardization": "Standardointi",
@@ -317,10 +382,12 @@ Versio 0.5 jakaa tilaajien riskikokemuksen kuuteen osaan:
 - **markkina-/hyväksyttävyysriski**: tilaajien, käyttäjien, sijoittajien ja markkinan hyväksyntä.
 
 Tämä tekee näkyväksi, että puurakentamisen jarru ei ole vain yksi 'riski', vaan useiden riskien yhdistelmä. Eri skenaariot voivat pienentää eri riskikomponentteja eri tahtiin.
+
+Versio 0.7 lisää tähän materiaalivirran rajoitteen: jos puutuotekysyntä kasvaa nopeammin kuin rakentamiseen soveltuva kapasiteetti, kustannusepävarmuus ja toimitusketjuriski kasvavat. Vientimarkkinan houkuttelevuus voi hidastaa kapasiteetin ohjautumista kotimaiseen rakentamiseen.
 """
 )
 
 st.info(
-    "Version 0.6: materiaalivalinnan hajonnan oletuksia pienennettiin, jotta satunnaisuus ei dominoi mallia. Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Version 0.7: malliin lisättiin materiaalikapasiteetin ja puutuotevirtojen rajoite.  Riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
     "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
 )

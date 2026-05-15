@@ -144,8 +144,8 @@ DEFAULT_PARAMS = {
 
     # Initial system states, 0..1
     "initial_trust_in_wood": 0.30,
-    "initial_design_competence": 0.30,
-    "initial_contractor_competence": 0.24,
+    "initial_design_competence": 0.28,
+    "initial_contractor_competence": 0.25,
     "initial_supplier_capacity": 0.15,
     "initial_standardization": 0.22,
     "initial_regulatory_routine": 0.22,
@@ -192,11 +192,11 @@ DEFAULT_PARAMS = {
     "cluster_strength": 0.10,
 
     # Learning and forgetting
-    "learning_rate": 0.06,
+    "learning_rate": 0.08,
     "standardization_learning_rate": 0.06,
     "trust_success_impact": 0.04,
     "trust_failure_impact": 0.14,
-    "competence_decay": 0.008,
+    "competence_decay": 0.006,
     "lock_in_decay_from_wood": 0.025,
 
     # Project outcome probabilities; can be modified by building type
@@ -210,6 +210,22 @@ DEFAULT_PARAMS = {
     "capacity_learning_rate": 0.07,
     "capacity_depreciation": 0.007,
     "max_capacity_growth_per_year": 0.09,
+
+    # Material flow and production constraints.
+    # These are normalized 0..1 indicators, not physical cubic-metre values yet.
+    "initial_material_capacity": 0.35,
+    "max_material_capacity": 0.75,
+    "raw_material_limit": 0.90,
+    "material_capacity_growth_rate": 0.04,
+    "material_capacity_depreciation": 0.005,
+    "material_bottleneck_cost_impact": 0.20,
+    "material_bottleneck_risk_impact": 0.25,
+
+    # Export/domestic allocation logic.
+    "export_market_attractiveness": 0.70,
+    "domestic_construction_price_premium": 0.00,
+    "export_reallocation_sensitivity": 0.25,
+    "domestic_demand_stability": 0.30,
 
     # Education dynamics
     "education_delay_years": 3,

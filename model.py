@@ -53,6 +53,21 @@ class WoodConstructionLockInModel(MesaModel):
         self.design_competence = self.params["initial_design_competence"]
         self.contractor_competence = self.params["initial_contractor_competence"]
         self.supplier_capacity = self.params["initial_supplier_capacity"]
+
+        # Material-flow subsystem.
+        # supplier_capacity = delivery capability of the ecosystem
+        # material_capacity = available construction-grade wood product/system capacity
+        self.material_capacity = self.params.get("initial_material_capacity", 0.35)
+        self.material_bottleneck = 0.0
+        self.material_capacity_utilization = 0.0
+        self.material_price_pressure = 0.0
+        self.material_risk_pressure = 0.0
+        self.domestic_allocation_factor = 0.0
+        self.effective_material_capacity_limit = min(
+            self.params.get("max_material_capacity", 0.75),
+            self.params.get("raw_material_limit", 0.90),
+        )
+
         self.standardization = self.params["initial_standardization"]
         self.regulatory_routine = self.params["initial_regulatory_routine"]
         self.education_capacity = self.params["initial_education_capacity"]
@@ -161,11 +176,14 @@ class WoodConstructionLockInModel(MesaModel):
         shortage = max(0.0, self.wood_demand_pressure - self.supplier_capacity)
         intensity = bt.get("capacity_intensity", 1.0)
 
+        material_price_pressure = getattr(self, "material_price_pressure", 0.0)
+
         if material == "wood":
             return max(
                 -0.05,
                 bt.get("wood_base_cost_premium", p["wood_base_cost_premium"])
                 + p["capacity_shortage_penalty"] * shortage * intensity
+                + material_price_pressure
                 - 0.10 * self.standardization
                 - 0.06 * self.design_competence
                 - 0.05 * self.contractor_competence,
@@ -175,6 +193,7 @@ class WoodConstructionLockInModel(MesaModel):
                 -0.03,
                 p["hybrid_base_cost_premium"]
                 + 0.45 * p["capacity_shortage_penalty"] * shortage * intensity
+                + 0.55 * material_price_pressure
                 - 0.06 * self.standardization
                 - 0.03 * self.design_competence,
             )
@@ -195,6 +214,60 @@ class WoodConstructionLockInModel(MesaModel):
             self.building_types[building_type].get("risk_multiplier", 1.0)
         )
         return risk, components
+
+
+    def _update_material_constraints(self):
+        """Update material-flow constraints after yearly material demand is known.
+
+        This subsystem separates:
+        - supplier_capacity: project-delivery capability of the wood-construction ecosystem
+        - material_capacity: construction-grade wood product/system availability
+
+        Material capacity is constrained by industrial expansion potential,
+        raw-material/sustainability boundaries and export/domestic allocation.
+        """
+        p = self.params
+
+        allocation_signal = (
+            p.get("domestic_demand_stability", 0.30)
+            + p.get("domestic_construction_price_premium", 0.00)
+            - 0.5 * p.get("export_market_attractiveness", 0.70)
+        )
+
+        domestic_allocation_gain = p.get("export_reallocation_sensitivity", 0.25) * allocation_signal
+        self.domestic_allocation_factor = clamp(0.30 + domestic_allocation_gain, 0.05, 0.75)
+
+        industrial_limit = p.get("max_material_capacity", 0.75) + self.domestic_allocation_factor * 0.20
+        raw_limit = p.get("raw_material_limit", 0.90)
+        self.effective_material_capacity_limit = clamp(min(industrial_limit, raw_limit), 0.05, 1.0)
+
+        demand = self.wood_demand_pressure
+        self.material_capacity_utilization = demand / max(0.01, self.material_capacity)
+        self.material_bottleneck = max(0.0, demand - self.material_capacity)
+
+        self.material_price_pressure = (
+            self.material_bottleneck
+            * p.get("material_bottleneck_cost_impact", 0.20)
+        )
+        self.material_risk_pressure = (
+            self.material_bottleneck
+            * p.get("material_bottleneck_risk_impact", 0.25)
+        )
+
+        growth_signal = (
+            0.65 * self.material_bottleneck
+            + 0.25 * p.get("supplier_investment_support", 0.20)
+            + 0.20 * p.get("cluster_strength", 0.10)
+            + 0.15 * p.get("domestic_demand_stability", 0.30)
+        )
+        growth = p.get("material_capacity_growth_rate", 0.04) * max(0.0, growth_signal)
+        depreciation = p.get("material_capacity_depreciation", 0.005)
+
+        self.material_capacity = clamp(
+            self.material_capacity + growth - depreciation,
+            0.01,
+            self.effective_material_capacity_limit,
+        )
 
     def _update_system_learning(self, results):
         p = self.params
@@ -253,16 +326,13 @@ class WoodConstructionLockInModel(MesaModel):
             trust_ceiling
         )
 
-        effective_learning_rate = p["learning_rate"] * (1 + 0.5 * p["cluster_strength"])
-        competence_learning = effective_learning_rate * wood_like_share
-        
+        competence_learning = p["learning_rate"] * wood_like_share
         self.design_competence = clamp(
             self.design_competence
             + competence_learning
             + 0.4 * competence_learning * self.workforce
             - p["competence_decay"]
         )
-        
         self.contractor_competence = clamp(
             self.contractor_competence
             + 0.85 * competence_learning
@@ -401,6 +471,7 @@ class WoodConstructionLockInModel(MesaModel):
         self.concrete_market_share = concrete_count / total
         self.wood_demand_pressure = self.wood_market_share + 0.5 * self.hybrid_market_share
 
+        self._update_material_constraints()
         self._update_system_learning(results)
         self.supplier.step()
         self.education.step()
@@ -421,6 +492,13 @@ class WoodConstructionLockInModel(MesaModel):
             "design_competence": self.design_competence,
             "contractor_competence": self.contractor_competence,
             "supplier_capacity": self.supplier_capacity,
+            "material_capacity": self.material_capacity,
+            "material_capacity_utilization": self.material_capacity_utilization,
+            "material_bottleneck": self.material_bottleneck,
+            "material_price_pressure": self.material_price_pressure,
+            "material_risk_pressure": self.material_risk_pressure,
+            "domestic_allocation_factor": self.domestic_allocation_factor,
+            "effective_material_capacity_limit": self.effective_material_capacity_limit,
             "standardization": self.standardization,
             "regulatory_routine": self.regulatory_routine,
             "education_capacity": self.education_capacity,

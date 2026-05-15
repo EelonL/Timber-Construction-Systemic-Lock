@@ -1,5 +1,15 @@
 # TTS PuuSiirtymä
 
+## Version 0.7
+
+Uutta:
+
+- Malliin lisättiin materiaalivirtojen ja puutuotekapasiteetin rajoittava silmukka.
+- Uudet muuttujat kuvaavat rakentamiseen soveltuvaa puutuotekapasiteettia, kapasiteetin ylärajaa, raaka-aine-/kestävyysrajaa, materiaalipullonkaulaa ja vientimarkkinan houkuttelevuutta.
+- Jos puutuotekysyntä ylittää kapasiteetin, kustannusepävarmuus ja toimitusketjuriski kasvavat.
+- Kotimaan kysynnän ennustettavuus ja kotimaisen rakentamisen maksama hintapreemio voivat kasvattaa kotimaan allokaatiota.
+- Käyttöliittymään lisättiin materiaalivirtojen kuvaaja ja uudet säätimet.
+
 ## Version 0.6
 
 Korjaus materiaalivalinnan satunnaisuuteen:
