@@ -9,8 +9,8 @@ The model is meant for exploring mechanisms and scenarios, not forecasting.
 BUILDING_TYPES = {
     "Kerrostalot": {
         "project_share": 0.28,
-        "initial_wood_share": 0.03,
-        "initial_hybrid_share": 0.08,
+        "initial_wood_share": 0.02,
+        "initial_hybrid_share": 0.05,
         "wood_base_cost_premium": 0.06,
         "base_failure_probability_wood": 0.12,
         "base_failure_probability_hybrid": 0.08,
@@ -18,7 +18,7 @@ BUILDING_TYPES = {
         "public_share": 0.15,
         "climate_relevance": 1.00,
         "policy_relevance": 0.60,
-        "capacity_intensity": 1.20,
+        "capacity_intensity": 1.25,
         "risk_components": {
             "competence": 0.68,
             "regulatory_fire": 0.72,
@@ -30,7 +30,7 @@ BUILDING_TYPES = {
     },
     "Pienkerrostalot": {
         "project_share": 0.10,
-        "initial_wood_share": 0.55,
+        "initial_wood_share": 0.45,
         "initial_hybrid_share": 0.10,
         "wood_base_cost_premium": 0.02,
         "base_failure_probability_wood": 0.07,
@@ -52,7 +52,7 @@ BUILDING_TYPES = {
     "Opetusrakennukset": {
         "project_share": 0.14,
         "initial_wood_share": 0.28,
-        "initial_hybrid_share": 0.12,
+        "initial_hybrid_share": 0.10,
         "wood_base_cost_premium": 0.04,
         "base_failure_probability_wood": 0.08,
         "base_failure_probability_hybrid": 0.06,
@@ -73,7 +73,7 @@ BUILDING_TYPES = {
     "Julkiset rakennukset muut": {
         "project_share": 0.16,
         "initial_wood_share": 0.16,
-        "initial_hybrid_share": 0.12,
+        "initial_hybrid_share": 0.10,
         "wood_base_cost_premium": 0.05,
         "base_failure_probability_wood": 0.09,
         "base_failure_probability_hybrid": 0.06,
@@ -93,8 +93,8 @@ BUILDING_TYPES = {
     },
     "Teollisuusrakennukset": {
         "project_share": 0.16,
-        "initial_wood_share": 0.13,
-        "initial_hybrid_share": 0.12,
+        "initial_wood_share": 0.08,
+        "initial_hybrid_share": 0.10,
         "wood_base_cost_premium": 0.04,
         "base_failure_probability_wood": 0.07,
         "base_failure_probability_hybrid": 0.05,
