@@ -1,3 +1,4 @@
+from pathlib import Path
 import copy
 import pandas as pd
 import streamlit as st
@@ -9,8 +10,8 @@ from parameters import BUILDING_TYPES
 
 
 st.set_page_config(
-    page_title="TTS PuuSiirtymä",
-    page_icon="🌲",
+    page_title="Puurakentamisen systeeminen malli",
+    page_icon="assets/tts_logo.jpg",
     layout="wide",
 )
 
@@ -170,11 +171,32 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
     st.altair_chart(chart, use_container_width=True)
 
 
-st.title("🌲 TTS PuuSiirtymä")
-st.caption(
-    "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.9.1 käyttää TTS:n teemavärejä ja Satoshi-fonttiperhettä, jos fontti on saatavilla selaimessa."
-)
+logo_path = Path(__file__).parent / "assets" / "tts_logo.jpg"
+
+col_logo, col_title = st.columns([1, 6])
+
+with col_logo:
+    st.image(str(logo_path), width=120)
+
+with col_title:
+    st.markdown(
+        """
+        <h1 style="margin-bottom: 0; color: #0C397F;">
+            Puurakentamisen systeeminen malli
+        </h1>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <p style="margin-top: 0.2rem; color: #4A5A78; font-size: 1.05rem;">
+            Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä.
+            Malli ei ennusta todellista markkinaosuutta, vaan tekee näkyväksi systeemisiä takaisinkytkentöjä.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
 RISK_LABELS = {
     "risk_competence": "Osaamisriski",
