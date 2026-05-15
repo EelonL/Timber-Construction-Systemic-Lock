@@ -16,8 +16,17 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.4 erottaa rakennustyypit, jotta siirtymää voidaan tarkastella segmenteittäin."
+    "Versio 0.5 erottaa rakennustyypit ja jakaa tilaajien riskikokemuksen alakomponentteihin."
 )
+
+RISK_LABELS = {
+    "risk_competence": "Osaamisriski",
+    "risk_regulatory_fire": "Sääntely- ja paloturvallisuusriski",
+    "risk_cost_uncertainty": "Kustannusepävarmuus",
+    "risk_supply_chain": "Toimitusketjuriski",
+    "risk_moisture_technical": "Kosteus- ja tekninen riski",
+    "risk_market_acceptance": "Markkina-/hyväksyttävyysriski",
+}
 
 with st.sidebar:
     st.header("Skenaario")
@@ -88,6 +97,27 @@ with st.sidebar:
             0.000, 0.050, float(params.get("trust_decay", 0.012)), 0.001
         )
 
+    with st.expander("Riskikomponenttien painot"):
+        st.caption("Painot määräävät, kuinka paljon kukin riskikomponentti vaikuttaa materiaalivalintaan.")
+        params["risk_weight_competence"] = st.slider(
+            "Osaamisriski", 0.0, 0.50, float(params["risk_weight_competence"]), 0.01
+        )
+        params["risk_weight_regulatory_fire"] = st.slider(
+            "Sääntely- ja paloturvallisuusriski", 0.0, 0.50, float(params["risk_weight_regulatory_fire"]), 0.01
+        )
+        params["risk_weight_cost_uncertainty"] = st.slider(
+            "Kustannusepävarmuus", 0.0, 0.50, float(params["risk_weight_cost_uncertainty"]), 0.01
+        )
+        params["risk_weight_supply_chain"] = st.slider(
+            "Toimitusketjuriski", 0.0, 0.50, float(params["risk_weight_supply_chain"]), 0.01
+        )
+        params["risk_weight_moisture_technical"] = st.slider(
+            "Kosteus- ja tekninen riski", 0.0, 0.50, float(params["risk_weight_moisture_technical"]), 0.01
+        )
+        params["risk_weight_market_acceptance"] = st.slider(
+            "Markkina-/hyväksyttävyysriski", 0.0, 0.50, float(params["risk_weight_market_acceptance"]), 0.01
+        )
+
     with st.expander("Rakennustyyppien lähtöosuudet"):
         st.caption(
             "Nämä ovat alustavia malliarvoja. Ne kannattaa myöhemmin kalibroida tilastoilla."
@@ -108,6 +138,11 @@ with st.sidebar:
                 f"Hanketyypin osuus simuloidusta markkinasta: {bt_name}",
                 0.01, 0.60, float(bt["project_share"]), 0.01,
                 key=f"{bt_name}_project_share"
+            )
+            bt["risk_multiplier"] = st.slider(
+                f"Kokonaisriskikerroin: {bt_name}",
+                0.40, 1.80, float(bt["risk_multiplier"]), 0.05,
+                key=f"{bt_name}_risk_multiplier"
             )
 
     with st.expander("Lisäasetukset"):
@@ -138,10 +173,9 @@ def run_model_cached(params_tuple, building_types_tuple):
 
 params_tuple = tuple(sorted(params.items()))
 building_types_tuple = tuple(
-    (name, tuple(sorted(data.items())))
+    (name, tuple(sorted(data.items(), key=lambda x: x[0])))
     for name, data in sorted(building_types.items())
 )
-# Convert nested tuple back-friendly before caching call
 building_types_for_cache = tuple(
     (name, dict(items))
     for name, items in building_types_tuple
@@ -174,6 +208,19 @@ st.subheader("Puu + hybridi rakennustyypeittäin")
 wood_like_pivot = segments.pivot(index="year", columns="building_type", values="wood_like_share")
 st.line_chart(wood_like_pivot)
 
+st.subheader("Riskikomponentit koko markkinassa")
+risk_cols = list(RISK_LABELS.keys())
+risk_df = history.set_index("year")[risk_cols].rename(columns=RISK_LABELS)
+st.line_chart(risk_df)
+
+st.subheader("Riskikomponentit rakennustyypeittäin")
+selected_bt = st.selectbox(
+    "Valitse rakennustyyppi riskikomponenttien tarkasteluun",
+    sorted(segments["building_type"].unique())
+)
+seg_risk = segments[segments["building_type"] == selected_bt].set_index("year")[risk_cols].rename(columns=RISK_LABELS)
+st.line_chart(seg_risk)
+
 st.subheader("Rakennustyyppien lopputilanne")
 last_year = segments["year"].max()
 last_segments = segments[segments["year"] == last_year].copy()
@@ -192,6 +239,12 @@ display_cols = [
     "segment_reference_stock",
     "avg_wood_cost_premium",
     "avg_wood_perceived_risk",
+    "risk_competence",
+    "risk_regulatory_fire",
+    "risk_cost_uncertainty",
+    "risk_supply_chain",
+    "risk_moisture_technical",
+    "risk_market_acceptance",
 ]
 st.dataframe(
     last_segments[display_cols].rename(columns={
@@ -199,7 +252,8 @@ st.dataframe(
         "projects": "Hankkeita",
         "segment_reference_stock": "Segmentin referenssivaranto",
         "avg_wood_cost_premium": "Puun kustannuslisä",
-        "avg_wood_perceived_risk": "Puun koettu riski",
+        "avg_wood_perceived_risk": "Puun koettu kokonaisriski",
+        **RISK_LABELS,
     }),
     use_container_width=True,
 )
@@ -228,17 +282,17 @@ state_df = state_df.rename(columns={
 st.line_chart(state_df)
 
 st.subheader("Puun kustannus-, riski- ja epäonnistumissignaalit")
-risk_df = history.set_index("year")[[
+basic_risk_df = history.set_index("year")[[
     "avg_wood_cost_premium",
     "avg_wood_perceived_risk",
     "wood_failure_rate",
 ]]
-risk_df = risk_df.rename(columns={
+basic_risk_df = basic_risk_df.rename(columns={
     "avg_wood_cost_premium": "Puun keskim. kustannuslisä",
-    "avg_wood_perceived_risk": "Koettu riski",
+    "avg_wood_perceived_risk": "Koettu kokonaisriski",
     "wood_failure_rate": "Epäonnistumisaste",
 })
-st.line_chart(risk_df)
+st.line_chart(basic_risk_df)
 
 with st.expander("Näytä vuosittainen data"):
     st.dataframe(history, use_container_width=True)
@@ -252,18 +306,20 @@ with st.expander("Näytä hankeloki"):
 st.subheader("Tulkinta")
 st.markdown(
     """
-Versio 0.4 erottaa rakennustyypit. Tämä on tärkeää, koska puurakentaminen ei ole samassa asemassa eri segmenteissä:
+Versio 0.5 jakaa tilaajien riskikokemuksen kuuteen osaan:
 
-- pienkerrostaloissa puu voi olla jo varsin vahva,
-- opetusrakennuksissa ja julkisissa hankkeissa poliittinen ohjaus voi vaikuttaa paljon,
-- kerrostaloissa betonijärjestelmän lukkiutuminen, riskit ja kustannuspaineet ovat vahvempia,
-- toimitila- ja teollisuusrakentamisessa päätöksenteko voi olla enemmän kustannus- ja toimivuusperusteista.
+- **osaamisriski**: onko suunnittelijoilla, urakoitsijoilla ja työvoimalla riittävä osaaminen,
+- **sääntely- ja paloturvallisuusriski**: ovatko lupakäytännöt, paloturvallisuus ja hyväksyntäprosessi ennakoitavia,
+- **kustannusepävarmuus**: kuinka paljon hinta- ja riskipreemioita liittyy puuhun,
+- **toimitusketjuriski**: riittääkö kapasiteetti ja onko toimittajakenttä luotettava,
+- **kosteus- ja tekninen riski**: teknisen toteutuksen, kosteudenhallinnan ja kestävyyden epävarmuus,
+- **markkina-/hyväksyttävyysriski**: tilaajien, käyttäjien, sijoittajien ja markkinan hyväksyntä.
 
-Mallin tarkoitus ei ole ennustaa todellisia markkinaosuuksia, vaan tutkia, missä segmenteissä siirtymä voisi syntyä ja missä lukkiutuminen säilyy.
+Tämä tekee näkyväksi, että puurakentamisen jarru ei ole vain yksi 'riski', vaan useiden riskien yhdistelmä. Eri skenaariot voivat pienentää eri riskikomponentteja eri tahtiin.
 """
 )
 
 st.info(
-    "Version 0.4: luottamusmuuttujaan lisättiin yläraja, vaimeneva kasvu ja hidas palautuminen kohti perustasoa. Rakennustyyppien lähtöarvot ovat edelleen alustavia. "
-    "Seuraava askel voisi olla todellisen markkinaosuusdatan ja hankemäärien lisääminen rakennustyypeittäin."
+    "Version 0.5: riskikomponenttien lähtöarvot ja painot ovat tutkimuksella perusteltuja alustavia malliarvoja. "
+    "Ne kannattaa kalibroida asiantuntijahaastatteluilla ja rakennustyyppikohtaisella evidenssillä."
 )

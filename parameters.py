@@ -1,19 +1,17 @@
 """
 Default parameters for TTS PuuSiirtymä.
 
-Version 0.3 adds building-type-specific market segments.
+Version 0.5 adds explicit perceived-risk components.
 All values are intentionally approximate and normalized.
 The model is meant for exploring mechanisms and scenarios, not forecasting.
 """
 
 BUILDING_TYPES = {
-    # The shares below are rough starting assumptions based on recent Finnish market observations
-    # discussed during model development. They should be calibrated later.
     "Kerrostalot": {
         "project_share": 0.28,
         "initial_wood_share": 0.03,
         "initial_hybrid_share": 0.08,
-        "wood_base_cost_premium": 0.10,
+        "wood_base_cost_premium": 0.06,
         "base_failure_probability_wood": 0.12,
         "base_failure_probability_hybrid": 0.08,
         "risk_multiplier": 1.25,
@@ -21,12 +19,20 @@ BUILDING_TYPES = {
         "climate_relevance": 1.00,
         "policy_relevance": 0.80,
         "capacity_intensity": 1.20,
+        "risk_components": {
+            "competence": 0.68,
+            "regulatory_fire": 0.72,
+            "cost_uncertainty": 0.58,
+            "supply_chain": 0.56,
+            "moisture_technical": 0.48,
+            "market_acceptance": 0.62,
+        },
     },
     "Pienkerrostalot": {
         "project_share": 0.10,
         "initial_wood_share": 0.55,
         "initial_hybrid_share": 0.10,
-        "wood_base_cost_premium": 0.03,
+        "wood_base_cost_premium": 0.02,
         "base_failure_probability_wood": 0.07,
         "base_failure_probability_hybrid": 0.05,
         "risk_multiplier": 0.75,
@@ -34,12 +40,20 @@ BUILDING_TYPES = {
         "climate_relevance": 0.80,
         "policy_relevance": 0.60,
         "capacity_intensity": 0.70,
+        "risk_components": {
+            "competence": 0.32,
+            "regulatory_fire": 0.30,
+            "cost_uncertainty": 0.30,
+            "supply_chain": 0.34,
+            "moisture_technical": 0.34,
+            "market_acceptance": 0.28,
+        },
     },
     "Opetusrakennukset": {
         "project_share": 0.14,
         "initial_wood_share": 0.28,
         "initial_hybrid_share": 0.12,
-        "wood_base_cost_premium": 0.05,
+        "wood_base_cost_premium": 0.04,
         "base_failure_probability_wood": 0.08,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 0.90,
@@ -47,12 +61,20 @@ BUILDING_TYPES = {
         "climate_relevance": 1.00,
         "policy_relevance": 1.00,
         "capacity_intensity": 0.90,
+        "risk_components": {
+            "competence": 0.46,
+            "regulatory_fire": 0.50,
+            "cost_uncertainty": 0.42,
+            "supply_chain": 0.40,
+            "moisture_technical": 0.45,
+            "market_acceptance": 0.34,
+        },
     },
     "Julkiset rakennukset muut": {
         "project_share": 0.16,
         "initial_wood_share": 0.16,
         "initial_hybrid_share": 0.12,
-        "wood_base_cost_premium": 0.06,
+        "wood_base_cost_premium": 0.05,
         "base_failure_probability_wood": 0.09,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 0.95,
@@ -60,6 +82,14 @@ BUILDING_TYPES = {
         "climate_relevance": 0.95,
         "policy_relevance": 1.00,
         "capacity_intensity": 0.90,
+        "risk_components": {
+            "competence": 0.50,
+            "regulatory_fire": 0.52,
+            "cost_uncertainty": 0.46,
+            "supply_chain": 0.42,
+            "moisture_technical": 0.46,
+            "market_acceptance": 0.38,
+        },
     },
     "Teollisuusrakennukset": {
         "project_share": 0.16,
@@ -73,12 +103,20 @@ BUILDING_TYPES = {
         "climate_relevance": 0.70,
         "policy_relevance": 0.50,
         "capacity_intensity": 0.75,
+        "risk_components": {
+            "competence": 0.40,
+            "regulatory_fire": 0.38,
+            "cost_uncertainty": 0.42,
+            "supply_chain": 0.45,
+            "moisture_technical": 0.36,
+            "market_acceptance": 0.34,
+        },
     },
     "Toimitilat": {
         "project_share": 0.16,
         "initial_wood_share": 0.08,
         "initial_hybrid_share": 0.15,
-        "wood_base_cost_premium": 0.07,
+        "wood_base_cost_premium": 0.06,
         "base_failure_probability_wood": 0.09,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 1.00,
@@ -86,6 +124,14 @@ BUILDING_TYPES = {
         "climate_relevance": 0.90,
         "policy_relevance": 0.60,
         "capacity_intensity": 1.00,
+        "risk_components": {
+            "competence": 0.50,
+            "regulatory_fire": 0.48,
+            "cost_uncertainty": 0.52,
+            "supply_chain": 0.48,
+            "moisture_technical": 0.42,
+            "market_acceptance": 0.52,
+        },
     },
 }
 
@@ -109,11 +155,19 @@ DEFAULT_PARAMS = {
     "initial_concrete_lock_in": 0.80,
 
     # Trust dynamics
-    # Trust is capped below 1.0 because even mature markets retain
-    # material preferences, institutional inertia and residual perceived risk.
     "trust_ceiling": 0.82,
     "trust_baseline": 0.28,
     "trust_decay": 0.012,
+
+    # Risk component weights.
+    # These weights are derived from the literature logic:
+    # competence and regulation/fire are usually the most prominent perceived risks.
+    "risk_weight_competence": 0.25,
+    "risk_weight_regulatory_fire": 0.22,
+    "risk_weight_cost_uncertainty": 0.18,
+    "risk_weight_supply_chain": 0.14,
+    "risk_weight_moisture_technical": 0.11,
+    "risk_weight_market_acceptance": 0.10,
 
     # Cost and risk; can be modified by building type
     "wood_base_cost_premium": 0.08,
@@ -163,7 +217,7 @@ DEFAULT_PARAMS = {
     "attractiveness_success_impact": 0.03,
     "attractiveness_failure_impact": 0.06,
 
-    # Developer mix. In v0.3 building types also have public_share, so this is a fallback.
+    # Developer mix. In v0.3+ building types also have public_share, so this is a fallback.
     "share_public_developers": 0.35,
     "share_pioneer_developers": 0.15,
     "share_conservative_developers": 0.50,

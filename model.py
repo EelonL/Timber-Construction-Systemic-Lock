@@ -17,6 +17,9 @@ from agents import (
     RegulatorAgent,
     ProjectResult,
     clamp,
+    calculate_risk_components,
+    composite_risk,
+    RISK_COMPONENTS,
 )
 from parameters import DEFAULT_PARAMS, BUILDING_TYPES
 
@@ -24,10 +27,10 @@ from parameters import DEFAULT_PARAMS, BUILDING_TYPES
 class WoodConstructionLockInModel(MesaModel):
     """Agent-based model of wood construction lock-in and transition.
 
-    Version 0.3:
+    Version 0.5:
     - One step = one year.
     - Projects have building types.
-    - Market shares are tracked both overall and by building type.
+    - Perceived risk is decomposed into six components.
     """
 
     def __init__(self, params=None, building_types=None):
@@ -89,8 +92,6 @@ class WoodConstructionLockInModel(MesaModel):
         n = max(30, int(self.params["projects_per_year"] * 0.75))
         developers = []
         for i in range(n):
-            # Developer type is now mainly determined at project level, but
-            # agent-level type still captures organizational disposition.
             r = self.random.random()
             if r < self.params["share_public_developers"]:
                 t = "public"
@@ -114,19 +115,16 @@ class WoodConstructionLockInModel(MesaModel):
         return names[-1]
 
     def _developer_type_for_building_type(self, building_type):
-        """Choose project-level developer type using the building type's public share."""
         bt = self.building_types[building_type]
         public_share = bt.get("public_share", self.params["share_public_developers"])
         r = self.random.random()
         if r < public_share:
             return "public"
-        # Within the non-public part, split pioneers and conservatives.
         if self.random.random() < self.params["share_pioneer_developers"]:
             return "pioneer"
         return "conservative"
 
     def _get_developer(self, developer_type):
-        # Prefer matching organizational type if possible.
         candidates = [d for d in self.developers if d.developer_type == developer_type]
         if candidates:
             return self.random.choice(candidates)
@@ -182,32 +180,21 @@ class WoodConstructionLockInModel(MesaModel):
             )
         return 0.0
 
-    def _estimate_perceived_risk(self, material: str, building_type: str) -> float:
-        bt = self.building_types[building_type]
-        risk_multiplier = bt.get("risk_multiplier", 1.0)
-        if material == "wood":
-            return clamp(
-                risk_multiplier * (
-                    0.48
-                    - 0.20 * self.trust_in_wood
-                    - 0.17 * self.design_competence
-                    - 0.14 * self.contractor_competence
-                    - 0.12 * self.standardization
-                    - 0.08 * self.regulatory_routine
-                )
-            )
-        if material == "hybrid":
-            return clamp(
-                risk_multiplier * (
-                    0.31
-                    - 0.12 * self.trust_in_wood
-                    - 0.09 * self.design_competence
-                    - 0.07 * self.contractor_competence
-                    - 0.06 * self.standardization
-                    - 0.04 * self.regulatory_routine
-                )
-            )
-        return 0.10
+    def _estimate_perceived_risk(self, material: str, building_type: str, developer_type: str) -> tuple[float, dict]:
+        cost = self._estimate_cost_premium(material, building_type)
+        components = calculate_risk_components(
+            self,
+            building_type,
+            material,
+            cost,
+            developer_type=developer_type,
+        )
+        risk = composite_risk(
+            components,
+            self.params,
+            self.building_types[building_type].get("risk_multiplier", 1.0)
+        )
+        return risk, components
 
     def _update_system_learning(self, results):
         p = self.params
@@ -228,16 +215,7 @@ class WoodConstructionLockInModel(MesaModel):
         if self.params.get("shock_year") == self.year:
             failure_signal += self.params.get("shock_strength", 0.20)
 
-        # Trust dynamics:
-        # Version 0.3 allowed trust to saturate at 1.0 too easily.
-        # In reality, even a mature wood-construction market retains
-        # residual distrust, material preferences and institutional inertia.
-        #
-        # Therefore:
-        # - successful projects have diminishing returns as trust approaches a ceiling,
-        # - failures hurt more when trust is high,
-        # - policy/cluster effects also have diminishing returns,
-        # - trust slowly drifts back toward a baseline if it is not reinforced.
+        # Trust dynamics from v0.4
         trust_ceiling = p.get("trust_ceiling", 0.82)
         trust_baseline = p.get("trust_baseline", 0.28)
         trust_decay = p.get("trust_decay", 0.012)
@@ -330,6 +308,15 @@ class WoodConstructionLockInModel(MesaModel):
                 + 0.14 * bt_wood_like
             )
 
+    def _risk_component_means(self, results, prefix=""):
+        rows = {}
+        relevant = [r for r in results if r.material in ("wood", "hybrid")]
+        for comp in RISK_COMPONENTS:
+            attr = f"risk_{comp}"
+            values = [getattr(r, attr) for r in relevant]
+            rows[f"{prefix}risk_{comp}"] = self._mean(values)
+        return rows
+
     def _segment_summary_rows(self, results):
         rows = []
         for bt_name in self.building_types:
@@ -344,7 +331,7 @@ class WoodConstructionLockInModel(MesaModel):
             wood_costs = [r.cost_premium for r in bt_results if r.material == "wood"]
             wood_risks = [r.perceived_risk for r in bt_results if r.material == "wood"]
 
-            rows.append({
+            row = {
                 "year": self.year,
                 "building_type": bt_name,
                 "projects": n,
@@ -356,7 +343,9 @@ class WoodConstructionLockInModel(MesaModel):
                 "wood_failure_rate": failures / max(1, wood + hybrid),
                 "avg_wood_cost_premium": self._mean(wood_costs),
                 "avg_wood_perceived_risk": self._mean(wood_risks),
-            })
+            }
+            row.update(self._risk_component_means(bt_results))
+            rows.append(row)
         return rows
 
     def step(self):
@@ -379,13 +368,22 @@ class WoodConstructionLockInModel(MesaModel):
 
             developer.update_experience(material, success)
 
+            cost_premium = self._estimate_cost_premium(material, building_type)
+            perceived_risk, risk_components = self._estimate_perceived_risk(material, building_type, developer_type)
+
             result = ProjectResult(
                 material=material,
                 success=success,
-                cost_premium=self._estimate_cost_premium(material, building_type),
-                perceived_risk=self._estimate_perceived_risk(material, building_type),
+                cost_premium=cost_premium,
+                perceived_risk=perceived_risk,
                 developer_type=developer_type,
                 building_type=building_type,
+                risk_competence=risk_components["competence"],
+                risk_regulatory_fire=risk_components["regulatory_fire"],
+                risk_cost_uncertainty=risk_components["cost_uncertainty"],
+                risk_supply_chain=risk_components["supply_chain"],
+                risk_moisture_technical=risk_components["moisture_technical"],
+                risk_market_acceptance=risk_components["market_acceptance"],
             )
             results.append(result)
             self.project_log.append({"year": self.year, **asdict(result)})
@@ -409,7 +407,7 @@ class WoodConstructionLockInModel(MesaModel):
         avg_risk_wood = self._mean([r.perceived_risk for r in results if r.material == "wood"])
         failure_rate_wood = self._mean([0 if r.success else 1 for r in results if r.material == "wood"])
 
-        self.history.append({
+        history_row = {
             "year": self.year,
             "projects": total,
             "wood_share": self.wood_market_share,
@@ -430,7 +428,9 @@ class WoodConstructionLockInModel(MesaModel):
             "avg_wood_cost_premium": avg_cost_wood,
             "avg_wood_perceived_risk": avg_risk_wood,
             "wood_failure_rate": failure_rate_wood,
-        })
+        }
+        history_row.update(self._risk_component_means(results))
+        self.history.append(history_row)
 
         self.segment_history.extend(self._segment_summary_rows(results))
         self.year += 1

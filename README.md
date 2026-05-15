@@ -1,5 +1,25 @@
 # TTS PuuSiirtymä
 
+Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumisesta ja mahdollisesta markkinasiirtymästä.
+
+Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.
+
+## Version 0.5
+
+Uutta:
+
+- Tilaajien riskikokemus jaettiin kuuteen komponenttiin:
+  - osaamisriski
+  - sääntely- ja paloturvallisuusriski
+  - kustannusepävarmuus
+  - toimitusketjuriski
+  - kosteus- ja tekninen riski
+  - markkina-/hyväksyttävyysriski
+- Jokaisella rakennustyypillä on oma riskikomponenttien lähtöprofiili.
+- Riskikomponenteille on painot, joita voi säätää käyttöliittymässä.
+- Käyttöliittymään lisättiin riskikomponenttien kuvaajat koko markkinalle ja rakennustyypeittäin.
+- Luottamusmuuttujassa säilyy version 0.4 yläraja, vaimeneva kasvu ja hidas palautuminen kohti perustasoa.
+
 ## Version 0.4
 
 Korjaus luottamusmuuttujaan:
@@ -9,12 +29,6 @@ Korjaus luottamusmuuttujaan:
 - Onnistuneiden hankkeiden vaikutus vaimenee, kun luottamus lähestyy ylärajaa.
 - Epäonnistumiset vaikuttavat voimakkaammin, kun luottamus on korkealla.
 - Luottamus palautuu hitaasti kohti perustasoa, jos sitä ei vahvisteta.
-- Käyttöliittymään lisättiin luottamuksen dynamiikan säätimet.
-
-
-Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumisesta ja mahdollisesta markkinasiirtymästä.
-
-Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.
 
 ## Version 0.3
 
@@ -61,7 +75,7 @@ toistuvat hankkeet
 
 - `app.py` – Streamlit-käyttöliittymä
 - `model.py` – agenttipohjainen malli
-- `agents.py` – agenttiluokat
+- `agents.py` – agenttiluokat ja riskikomponenttien laskenta
 - `parameters.py` – oletusparametrit ja rakennustyyppien lähtöarvot
 - `scenarios.py` – valmiit skenaariot
 - `requirements.txt` – Python-riippuvuudet
@@ -92,7 +106,7 @@ Jos vanha versio näkyy edelleen, paina Streamlit Cloudissa `Clear cache and rer
 
 ## Mallin rajoitukset
 
-Parametrit ovat alustavia ja suhteellisia. Rakennustyyppien lähtöarvot on tarkoitus kalibroida myöhemmin tilastojen, toimialaraporttien ja tutkimusten perusteella.
+Parametrit ovat alustavia ja suhteellisia. Rakennustyyppien lähtöarvot ja riskikomponenttien painot on tarkoitus kalibroida myöhemmin tilastojen, toimialaraporttien, tutkimusten ja asiantuntijahaastattelujen perusteella.
 
 Seuraavia jatkokehityskohteita:
 

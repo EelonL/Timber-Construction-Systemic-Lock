@@ -9,8 +9,120 @@ except Exception:
             pass
 
 
+RISK_COMPONENTS = [
+    "competence",
+    "regulatory_fire",
+    "cost_uncertainty",
+    "supply_chain",
+    "moisture_technical",
+    "market_acceptance",
+]
+
+
 def clamp(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, x))
+
+
+def component_weights(params: dict) -> dict:
+    return {
+        "competence": params.get("risk_weight_competence", 0.25),
+        "regulatory_fire": params.get("risk_weight_regulatory_fire", 0.22),
+        "cost_uncertainty": params.get("risk_weight_cost_uncertainty", 0.18),
+        "supply_chain": params.get("risk_weight_supply_chain", 0.14),
+        "moisture_technical": params.get("risk_weight_moisture_technical", 0.11),
+        "market_acceptance": params.get("risk_weight_market_acceptance", 0.10),
+    }
+
+
+def composite_risk(components: dict, params: dict, risk_multiplier: float = 1.0) -> float:
+    weights = component_weights(params)
+    total_w = sum(weights.values())
+    if total_w <= 0:
+        return clamp(sum(components.values()) / max(1, len(components)))
+    value = sum(weights[k] * components.get(k, 0.0) for k in weights) / total_w
+    return clamp(value * risk_multiplier)
+
+
+def calculate_risk_components(
+    model,
+    building_type: str,
+    material: str,
+    cost_premium: float,
+    developer_type: str = "conservative",
+    wood_experience: float = 0.0,
+    hybrid_experience: float = 0.0,
+) -> dict:
+    """Calculate perceived risk as six subcomponents.
+
+    The components are deliberately stylized. They are calibrated as normalized
+    0..1 risk indicators, not as probabilities.
+
+    Components:
+    - competence: lack of design/contractor/workforce competence
+    - regulatory_fire: regulation, permitting and fire-safety uncertainty
+    - cost_uncertainty: cost-estimate uncertainty and risk premium
+    - supply_chain: supplier availability and capacity risk
+    - moisture_technical: moisture, durability and technical execution risk
+    - market_acceptance: residual client/user/investor acceptance risk
+    """
+    p = model.params
+    bt = model.building_types[building_type]
+    base = bt.get("risk_components", {})
+    segment_ref = model.segment_reference_stock.get(building_type, 0.0)
+    shortage = max(0.0, model.wood_demand_pressure - model.supplier_capacity)
+
+    # Hybrid is treated as a transitional solution: lower risk than pure wood,
+    # but still affected by the same system variables.
+    if material == "hybrid":
+        material_factor = 0.68
+        experience = hybrid_experience
+    elif material == "wood":
+        material_factor = 1.00
+        experience = wood_experience
+    else:
+        material_factor = 0.25
+        experience = 0.0
+
+    conservative_extra = p.get("conservative_risk_extra", 0.15) if developer_type == "conservative" else 0.0
+    pioneer_reduction = 0.05 if developer_type == "pioneer" else 0.0
+    public_reduction = 0.03 if developer_type == "public" else 0.0
+
+    avg_competence = 0.5 * model.design_competence + 0.5 * model.contractor_competence
+
+    components = {
+        "competence": (
+            base.get("competence", 0.50)
+            * (1 - 0.55 * avg_competence - 0.15 * model.workforce - 0.10 * experience)
+        ),
+        "regulatory_fire": (
+            base.get("regulatory_fire", 0.50)
+            * (1 - 0.60 * model.regulatory_routine - 0.20 * model.standardization)
+        ),
+        "cost_uncertainty": (
+            base.get("cost_uncertainty", 0.50)
+            * (1 - 0.40 * model.standardization - 0.15 * model.trust_in_wood)
+            + max(0.0, cost_premium) * 1.15
+        ),
+        "supply_chain": (
+            base.get("supply_chain", 0.50)
+            * (1 - 0.60 * model.supplier_capacity)
+            + shortage * bt.get("capacity_intensity", 1.0) * 0.65
+        ),
+        "moisture_technical": (
+            base.get("moisture_technical", 0.50)
+            * (1 - 0.45 * model.contractor_competence - 0.35 * model.standardization)
+        ),
+        "market_acceptance": (
+            base.get("market_acceptance", 0.50)
+            * (1 - 0.45 * model.trust_in_wood - 0.25 * segment_ref)
+            + 0.5 * conservative_extra
+            - pioneer_reduction
+            - public_reduction
+        ),
+    }
+
+    # Apply material factor and final clamp.
+    return {k: clamp(v * material_factor) for k, v in components.items()}
 
 
 class BaseAgent(MesaAgent):
@@ -36,6 +148,12 @@ class ProjectResult:
     perceived_risk: float
     developer_type: str
     building_type: str
+    risk_competence: float
+    risk_regulatory_fire: float
+    risk_cost_uncertainty: float
+    risk_supply_chain: float
+    risk_moisture_technical: float
+    risk_market_acceptance: float
 
 
 class DeveloperAgent(BaseAgent):
@@ -71,6 +189,32 @@ class DeveloperAgent(BaseAgent):
                 return material
         return "concrete"
 
+    def _cost_premium_for_material(self, building_type: str, material: str) -> float:
+        m = self.model
+        p = m.params
+        bt = m.building_types[building_type]
+        shortage = max(0.0, m.wood_demand_pressure - m.supplier_capacity)
+        intensity = bt.get("capacity_intensity", 1.0)
+
+        if material == "wood":
+            return max(
+                -0.05,
+                bt.get("wood_base_cost_premium", p["wood_base_cost_premium"])
+                + p["capacity_shortage_penalty"] * shortage * intensity
+                - 0.10 * m.standardization
+                - 0.06 * m.design_competence
+                - 0.05 * m.contractor_competence,
+            )
+        if material == "hybrid":
+            return max(
+                -0.03,
+                p["hybrid_base_cost_premium"]
+                + 0.45 * p["capacity_shortage_penalty"] * shortage * intensity
+                - 0.06 * m.standardization
+                - 0.03 * m.design_competence,
+            )
+        return 0.0
+
     def choose_material(self, building_type: str) -> str:
         m = self.model
         p = m.params
@@ -79,52 +223,27 @@ class DeveloperAgent(BaseAgent):
         climate_weight = p["private_climate_weight"]
         policy_bonus = 0.0
         pioneer_bonus = 0.0
-        conservative_risk_extra = 0.0
 
         if self.developer_type == "public":
             climate_weight = p["public_climate_weight"]
             policy_bonus = p["public_procurement_strength"] * 0.40 * bt["policy_relevance"]
         elif self.developer_type == "pioneer":
             pioneer_bonus = p["pioneer_bonus"]
-        elif self.developer_type == "conservative":
-            conservative_risk_extra = p["conservative_risk_extra"]
 
-        shortage = max(0.0, m.wood_demand_pressure - m.supplier_capacity)
-        wood_cost = (
-            bt.get("wood_base_cost_premium", p["wood_base_cost_premium"])
-            + p["capacity_shortage_penalty"] * shortage * bt.get("capacity_intensity", 1.0)
-            - 0.10 * m.standardization
-            - 0.06 * m.design_competence
-            - 0.05 * m.contractor_competence
+        wood_cost = self._cost_premium_for_material(building_type, "wood")
+        hybrid_cost = self._cost_premium_for_material(building_type, "hybrid")
+
+        wood_components = calculate_risk_components(
+            m, building_type, "wood", wood_cost, self.developer_type,
+            self.wood_experience, self.hybrid_experience
         )
-        hybrid_cost = (
-            p["hybrid_base_cost_premium"]
-            + 0.45 * p["capacity_shortage_penalty"] * shortage * bt.get("capacity_intensity", 1.0)
-            - 0.06 * m.standardization
-            - 0.03 * m.design_competence
+        hybrid_components = calculate_risk_components(
+            m, building_type, "hybrid", hybrid_cost, self.developer_type,
+            self.wood_experience, self.hybrid_experience
         )
 
-        risk_multiplier = bt.get("risk_multiplier", 1.0)
-
-        wood_risk = risk_multiplier * (
-            0.48
-            - 0.20 * m.trust_in_wood
-            - 0.17 * m.design_competence
-            - 0.14 * m.contractor_competence
-            - 0.11 * m.regulatory_routine
-            - 0.12 * m.standardization
-            - 0.10 * self.wood_experience
-            + conservative_risk_extra
-        )
-        hybrid_risk = risk_multiplier * (
-            0.31
-            - 0.12 * m.trust_in_wood
-            - 0.09 * m.design_competence
-            - 0.07 * m.contractor_competence
-            - 0.07 * m.regulatory_routine
-            - 0.05 * self.hybrid_experience
-            + 0.5 * conservative_risk_extra
-        )
+        wood_risk = composite_risk(wood_components, p, bt.get("risk_multiplier", 1.0))
+        hybrid_risk = composite_risk(hybrid_components, p, bt.get("risk_multiplier", 1.0))
 
         carbon_benefit_wood = (
             p["carbon_policy_strength"]
@@ -134,7 +253,6 @@ class DeveloperAgent(BaseAgent):
         )
         carbon_benefit_hybrid = 0.55 * carbon_benefit_wood
 
-        # Building-type-specific reference effect: experience in the same segment matters.
         segment_ref = m.segment_reference_stock.get(building_type, 0.0)
         reference_bonus = 0.14 * m.reference_stock + 0.12 * segment_ref
         cluster_bonus = 0.12 * p["cluster_strength"]
@@ -148,7 +266,7 @@ class DeveloperAgent(BaseAgent):
             + 0.12 * self.wood_experience
             + 0.06 * m.attractiveness
             - p["cost_sensitivity"] * wood_cost
-            - p["risk_sensitivity"] * clamp(wood_risk)
+            - p["risk_sensitivity"] * wood_risk
             - 0.08 * m.concrete_lock_in
         )
 
@@ -160,7 +278,7 @@ class DeveloperAgent(BaseAgent):
             + 0.06 * self.hybrid_experience
             + 0.04 * m.attractiveness
             - 0.75 * p["cost_sensitivity"] * hybrid_cost
-            - 0.65 * p["risk_sensitivity"] * clamp(hybrid_risk)
+            - 0.65 * p["risk_sensitivity"] * hybrid_risk
             - 0.04 * m.concrete_lock_in
         )
 
