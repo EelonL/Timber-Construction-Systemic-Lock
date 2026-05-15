@@ -254,7 +254,24 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
     )
 
     if chart_name:
-        CHART_EXPORTS.append((chart_name, chart))
+        export_chart = chart.properties(
+            title=alt.TitleParams(
+                text=chart_name,
+                anchor="start",
+                fontSize=22,
+                fontWeight="bold",
+                color=TTS_COLORS["dark_blue"],
+                dy=-5,
+            )
+        ).configure_title(
+            font="Satoshi, Aptos, Segoe UI, Arial",
+            color=TTS_COLORS["dark_blue"],
+            fontSize=22,
+            fontWeight="bold",
+            anchor="start",
+        )
+
+        CHART_EXPORTS.append((chart_name, export_chart))
 
     st.altair_chart(chart, use_container_width=True)
 
