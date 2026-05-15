@@ -16,7 +16,7 @@ SCENARIOS = {
         },
     },
     "Julkinen kysyntäveturi": {
-        "description": "Julkiset tilaajat painottavat puuta ja hybridiratkaisuja kouluissa, päiväkodeissa ja muissa julkisissa hankkeissa.",
+        "description": "Julkiset tilaajat painottavat puuta ja hybridiratkaisuja erityisesti kouluissa, päiväkodeissa ja muissa julkisissa hankkeissa.",
         "updates": {
             "public_procurement_strength": 0.80,
             "share_public_developers": 0.45,

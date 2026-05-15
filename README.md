@@ -4,14 +4,21 @@ Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumises
 
 Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.
 
-## Version 0.2
+## Version 0.3
 
-Korjaukset version 0.1 jälkeen:
+Uutta:
 
-- Materiaalivalinta muutettiin deterministisestä argmax-valinnasta todennäköisyyspohjaiseksi softmax-valinnaksi.
-- Puulle ja hybridille lisättiin pieni minimikokeiluosuus.
-- Puutuoteteollinen kapasiteetti ei enää rapaudu täysin nollaan.
-- Skenaarioiden erot näkyvät paremmin.
+- Malliin lisättiin rakennustyypit:
+  - Kerrostalot
+  - Pienkerrostalot
+  - Opetusrakennukset
+  - Julkiset rakennukset muut
+  - Teollisuusrakennukset
+  - Toimitilat
+- Jokaisella rakennustyypillä on oma alustava puun ja hybridin lähtöosuus.
+- Jokaisella rakennustyypillä on oma riskikerroin, kustannuslisä, julkisen tilaajan osuus ja politiikkaherkkyys.
+- Käyttöliittymään lisättiin rakennustyyppikohtaiset kuvaajat.
+- Rakennustyyppien lähtöarvoja voi säätää sivupalkista.
 
 ## Mitä malli kuvaa?
 
@@ -43,7 +50,7 @@ toistuvat hankkeet
 - `app.py` – Streamlit-käyttöliittymä
 - `model.py` – agenttipohjainen malli
 - `agents.py` – agenttiluokat
-- `parameters.py` – oletusparametrit
+- `parameters.py` – oletusparametrit ja rakennustyyppien lähtöarvot
 - `scenarios.py` – valmiit skenaariot
 - `requirements.txt` – Python-riippuvuudet
 
@@ -69,27 +76,17 @@ python -m streamlit run app.py
 4. Valitse repo, branch ja entrypoint-tiedostoksi `app.py`.
 5. Deploy.
 
-## Skenaariot
-
-Mukana on seuraavat skenaariot:
-
-- Nykykehitys
-- Koulutuspanostus
-- Julkinen kysyntäveturi
-- Kysyntä + kapasiteettituki
-- Hiiliohjaus
-- Alueellinen klusteri
-- Negatiivinen shokki
+Jos vanha versio näkyy edelleen, paina Streamlit Cloudissa `Clear cache and rerun` tai `Reboot app`.
 
 ## Mallin rajoitukset
 
-Parametrit ovat alustavia ja suhteellisia. Malli on tarkoitettu mekanismien tutkimiseen, ei todellisten markkinaosuuksien ennustamiseen.
+Parametrit ovat alustavia ja suhteellisia. Rakennustyyppien lähtöarvot on tarkoitus kalibroida myöhemmin tilastojen, toimialaraporttien ja tutkimusten perusteella.
 
 Seuraavia jatkokehityskohteita:
 
-- rakennustyyppien lisääminen
-- alueelliset markkinat
+- todelliset hankemäärät rakennustyypeittäin
+- todellinen markkinaosuusdata vuosilta 2015–2025
 - toimittajien erottelu CLT/LVL/elementti/tilaelementti
 - koulutuspolkujen tarkempi mallinnus
-- todellisten hakija-, valmistumis- ja markkinaosuusdatojen käyttö
+- alueelliset markkinat
 - skenaarioiden tallennus ja vertailu

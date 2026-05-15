@@ -1,8 +1,10 @@
+import copy
 import pandas as pd
 import streamlit as st
 
 from model import WoodConstructionLockInModel
 from scenarios import SCENARIOS, get_params_for_scenario
+from parameters import BUILDING_TYPES
 
 
 st.set_page_config(
@@ -14,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Malli ei ennusta todellista markkinaosuutta, vaan tekee näkyväksi systeemisiä takaisinkytkentöjä."
+    "Versio 0.3 erottaa rakennustyypit, jotta siirtymää voidaan tarkastella segmenteittäin."
 )
 
 with st.sidebar:
@@ -26,9 +28,10 @@ with st.sidebar:
     st.header("Perusasetukset")
 
     params = get_params_for_scenario(scenario_name)
+    building_types = copy.deepcopy(BUILDING_TYPES)
 
     params["years"] = st.slider("Simulaation pituus, vuotta", 5, 50, int(params["years"]))
-    params["projects_per_year"] = st.slider("Hankkeita vuodessa", 20, 500, int(params["projects_per_year"]), step=10)
+    params["projects_per_year"] = st.slider("Simuloituja rakennushankkeita vuodessa", 20, 500, int(params["projects_per_year"]), step=10)
     params["random_seed"] = st.number_input("Satunnaissiemen", value=int(params["random_seed"]), step=1)
 
     st.divider()
@@ -62,18 +65,6 @@ with st.sidebar:
     st.divider()
     st.header("Lähtötilanne")
 
-    params["initial_wood_share"] = st.slider(
-        "Puun lähtöosuus",
-        0.0, 0.50, float(params["initial_wood_share"]), 0.01
-    )
-    params["initial_hybrid_share"] = st.slider(
-        "Hybridien lähtöosuus",
-        0.0, 0.50, float(params["initial_hybrid_share"]), 0.01
-    )
-    params["wood_base_cost_premium"] = st.slider(
-        "Puun lähtökustannuslisä",
-        -0.10, 0.30, float(params["wood_base_cost_premium"]), 0.01
-    )
     params["initial_supplier_capacity"] = st.slider(
         "Puutuoteteollinen kapasiteetti alussa",
         0.01, 1.0, float(params["initial_supplier_capacity"]), 0.01
@@ -82,6 +73,28 @@ with st.sidebar:
         "Betonijärjestelmän lukkiutuminen alussa",
         0.0, 1.0, float(params["initial_concrete_lock_in"]), 0.05
     )
+
+    with st.expander("Rakennustyyppien lähtöosuudet"):
+        st.caption(
+            "Nämä ovat alustavia malliarvoja. Ne kannattaa myöhemmin kalibroida tilastoilla."
+        )
+        for bt_name, bt in building_types.items():
+            st.markdown(f"**{bt_name}**")
+            bt["initial_wood_share"] = st.slider(
+                f"Puun lähtöosuus: {bt_name}",
+                0.0, 1.0, float(bt["initial_wood_share"]), 0.01,
+                key=f"{bt_name}_wood"
+            )
+            bt["initial_hybrid_share"] = st.slider(
+                f"Hybridin lähtöosuus: {bt_name}",
+                0.0, 1.0, float(bt["initial_hybrid_share"]), 0.01,
+                key=f"{bt_name}_hybrid"
+            )
+            bt["project_share"] = st.slider(
+                f"Hanketyypin osuus simuloidusta markkinasta: {bt_name}",
+                0.01, 0.60, float(bt["project_share"]), 0.01,
+                key=f"{bt_name}_project_share"
+            )
 
     with st.expander("Lisäasetukset"):
         params["choice_temperature"] = st.slider(
@@ -99,16 +112,28 @@ with st.sidebar:
 
 
 @st.cache_data(show_spinner=False)
-def run_model_cached(params_tuple):
+def run_model_cached(params_tuple, building_types_tuple):
     params = dict(params_tuple)
-    model = WoodConstructionLockInModel(params=params)
+    building_types = {k: dict(v) for k, v in building_types_tuple}
+    model = WoodConstructionLockInModel(params=params, building_types=building_types)
     history = model.run(params["years"])
     projects = model.project_dataframe()
-    return history, projects
+    segments = model.segment_dataframe()
+    return history, projects, segments
 
 
 params_tuple = tuple(sorted(params.items()))
-history, projects = run_model_cached(params_tuple)
+building_types_tuple = tuple(
+    (name, tuple(sorted(data.items())))
+    for name, data in sorted(building_types.items())
+)
+# Convert nested tuple back-friendly before caching call
+building_types_for_cache = tuple(
+    (name, dict(items))
+    for name, items in building_types_tuple
+)
+
+history, projects, segments = run_model_cached(params_tuple, building_types_for_cache)
 
 latest = history.iloc[-1]
 
@@ -118,7 +143,7 @@ c2.metric("Puu + hybridi lopussa", f"{latest['wood_like_share']*100:.1f} %")
 c3.metric("Luottamus puuhun", f"{latest['trust_in_wood']:.2f}")
 c4.metric("Puutuoteteollinen kapasiteetti", f"{latest['supplier_capacity']:.2f}")
 
-st.subheader("Markkinaosuudet ajan yli")
+st.subheader("Koko simuloidun markkinan markkinaosuudet")
 market_df = history.set_index("year")[["wood_share", "hybrid_share", "concrete_share"]]
 market_df = market_df.rename(columns={
     "wood_share": "Puu",
@@ -126,6 +151,44 @@ market_df = market_df.rename(columns={
     "concrete_share": "Betoni"
 })
 st.line_chart(market_df)
+
+st.subheader("Puun osuus rakennustyypeittäin")
+wood_pivot = segments.pivot(index="year", columns="building_type", values="wood_share")
+st.line_chart(wood_pivot)
+
+st.subheader("Puu + hybridi rakennustyypeittäin")
+wood_like_pivot = segments.pivot(index="year", columns="building_type", values="wood_like_share")
+st.line_chart(wood_like_pivot)
+
+st.subheader("Rakennustyyppien lopputilanne")
+last_year = segments["year"].max()
+last_segments = segments[segments["year"] == last_year].copy()
+last_segments["Puu %"] = last_segments["wood_share"] * 100
+last_segments["Hybridi %"] = last_segments["hybrid_share"] * 100
+last_segments["Puu + 0.5 × hybridi %"] = last_segments["wood_like_share"] * 100
+last_segments["Betoni %"] = last_segments["concrete_share"] * 100
+
+display_cols = [
+    "building_type",
+    "projects",
+    "Puu %",
+    "Hybridi %",
+    "Puu + 0.5 × hybridi %",
+    "Betoni %",
+    "segment_reference_stock",
+    "avg_wood_cost_premium",
+    "avg_wood_perceived_risk",
+]
+st.dataframe(
+    last_segments[display_cols].rename(columns={
+        "building_type": "Rakennustyyppi",
+        "projects": "Hankkeita",
+        "segment_reference_stock": "Segmentin referenssivaranto",
+        "avg_wood_cost_premium": "Puun kustannuslisä",
+        "avg_wood_perceived_risk": "Puun koettu riski",
+    }),
+    use_container_width=True,
+)
 
 st.subheader("Systeemin tilamuuttujat")
 state_df = history.set_index("year")[[
@@ -166,27 +229,27 @@ st.line_chart(risk_df)
 with st.expander("Näytä vuosittainen data"):
     st.dataframe(history, use_container_width=True)
 
+with st.expander("Näytä rakennustyyppikohtainen data"):
+    st.dataframe(segments, use_container_width=True)
+
 with st.expander("Näytä hankeloki"):
     st.dataframe(projects, use_container_width=True)
 
 st.subheader("Tulkinta")
 st.markdown(
     """
-Tässä mallissa puurakentaminen pääsee kasvu-uralle vain, jos useampi mekanismi vahvistuu samaan aikaan:
+Versio 0.3 erottaa rakennustyypit. Tämä on tärkeää, koska puurakentaminen ei ole samassa asemassa eri segmenteissä:
 
-- kysyntä tuottaa referenssejä ja oppimista,
-- oppiminen pienentää koettua riskiä,
-- standardointi pienentää kustannuslisää,
-- kapasiteetti kasvaa, kun kysyntä on riittävän ennustettavaa,
-- koulutus tuottaa osaajia viiveellä,
-- julkinen kysyntä ja hiiliohjaus voivat siirtää rakennuttajien päätöskynnystä.
+- pienkerrostaloissa puu voi olla jo varsin vahva,
+- opetusrakennuksissa ja julkisissa hankkeissa poliittinen ohjaus voi vaikuttaa paljon,
+- kerrostaloissa betonijärjestelmän lukkiutuminen, riskit ja kustannuspaineet ovat vahvempia,
+- toimitila- ja teollisuusrakentamisessa päätöksenteko voi olla enemmän kustannus- ja toimivuusperusteista.
 
-Version 0.2 muutos: materiaalivalinta on todennäköisyyspohjainen, ei puhdas voittaja-vie-kaiken-valinta. 
-Siksi myös lukkiutuneessa järjestelmässä voi syntyä pieni määrä puu- ja hybridirakentamisen kokeiluja.
+Mallin tarkoitus ei ole ennustaa todellisia markkinaosuuksia, vaan tutkia, missä segmenteissä siirtymä voisi syntyä ja missä lukkiutuminen säilyy.
 """
 )
 
 st.info(
-    "Version 0.2: parametrien arvot ovat edelleen alustavia. Seuraava askel olisi validoida parametreja asiantuntijahaastatteluilla "
-    "ja lisätä erilliset rakennustyypit, esimerkiksi koulut, päiväkodit, kerrostalot ja toimitilat."
+    "Version 0.3: rakennustyyppien lähtöarvot ovat alustavia ja kannattaa kalibroida tilastoilla. "
+    "Seuraava askel voisi olla todellisen markkinaosuusdatan ja hankemäärien lisääminen rakennustyypeittäin."
 )

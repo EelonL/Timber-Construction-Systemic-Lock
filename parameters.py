@@ -1,19 +1,100 @@
 """
 Default parameters for TTS PuuSiirtymä.
 
+Version 0.3 adds building-type-specific market segments.
 All values are intentionally approximate and normalized.
 The model is meant for exploring mechanisms and scenarios, not forecasting.
 """
+
+BUILDING_TYPES = {
+    # The shares below are rough starting assumptions based on recent Finnish market observations
+    # discussed during model development. They should be calibrated later.
+    "Kerrostalot": {
+        "project_share": 0.28,
+        "initial_wood_share": 0.03,
+        "initial_hybrid_share": 0.08,
+        "wood_base_cost_premium": 0.10,
+        "base_failure_probability_wood": 0.12,
+        "base_failure_probability_hybrid": 0.08,
+        "risk_multiplier": 1.20,
+        "public_share": 0.15,
+        "climate_relevance": 1.00,
+        "policy_relevance": 0.80,
+        "capacity_intensity": 1.20,
+    },
+    "Pienkerrostalot": {
+        "project_share": 0.10,
+        "initial_wood_share": 0.55,
+        "initial_hybrid_share": 0.10,
+        "wood_base_cost_premium": 0.03,
+        "base_failure_probability_wood": 0.07,
+        "base_failure_probability_hybrid": 0.05,
+        "risk_multiplier": 0.75,
+        "public_share": 0.20,
+        "climate_relevance": 0.80,
+        "policy_relevance": 0.60,
+        "capacity_intensity": 0.70,
+    },
+    "Opetusrakennukset": {
+        "project_share": 0.14,
+        "initial_wood_share": 0.28,
+        "initial_hybrid_share": 0.12,
+        "wood_base_cost_premium": 0.05,
+        "base_failure_probability_wood": 0.08,
+        "base_failure_probability_hybrid": 0.06,
+        "risk_multiplier": 0.90,
+        "public_share": 0.85,
+        "climate_relevance": 1.00,
+        "policy_relevance": 1.00,
+        "capacity_intensity": 0.90,
+    },
+    "Julkiset rakennukset muut": {
+        "project_share": 0.16,
+        "initial_wood_share": 0.16,
+        "initial_hybrid_share": 0.12,
+        "wood_base_cost_premium": 0.06,
+        "base_failure_probability_wood": 0.09,
+        "base_failure_probability_hybrid": 0.06,
+        "risk_multiplier": 0.95,
+        "public_share": 0.90,
+        "climate_relevance": 0.95,
+        "policy_relevance": 1.00,
+        "capacity_intensity": 0.90,
+    },
+    "Teollisuusrakennukset": {
+        "project_share": 0.16,
+        "initial_wood_share": 0.13,
+        "initial_hybrid_share": 0.12,
+        "wood_base_cost_premium": 0.04,
+        "base_failure_probability_wood": 0.07,
+        "base_failure_probability_hybrid": 0.05,
+        "risk_multiplier": 0.80,
+        "public_share": 0.10,
+        "climate_relevance": 0.70,
+        "policy_relevance": 0.50,
+        "capacity_intensity": 0.75,
+    },
+    "Toimitilat": {
+        "project_share": 0.16,
+        "initial_wood_share": 0.08,
+        "initial_hybrid_share": 0.15,
+        "wood_base_cost_premium": 0.07,
+        "base_failure_probability_wood": 0.09,
+        "base_failure_probability_hybrid": 0.06,
+        "risk_multiplier": 1.00,
+        "public_share": 0.20,
+        "climate_relevance": 0.90,
+        "policy_relevance": 0.60,
+        "capacity_intensity": 1.00,
+    },
+}
+
 
 DEFAULT_PARAMS = {
     # Simulation
     "years": 25,
     "random_seed": 42,
     "projects_per_year": 120,
-
-    # Initial market shares
-    "initial_wood_share": 0.05,
-    "initial_hybrid_share": 0.10,
 
     # Initial system states, 0..1
     "initial_trust_in_wood": 0.30,
@@ -27,7 +108,7 @@ DEFAULT_PARAMS = {
     "initial_attractiveness": 0.28,
     "initial_concrete_lock_in": 0.80,
 
-    # Cost and risk
+    # Cost and risk; can be modified by building type
     "wood_base_cost_premium": 0.08,
     "hybrid_base_cost_premium": 0.035,
     "capacity_shortage_penalty": 0.18,
@@ -36,7 +117,6 @@ DEFAULT_PARAMS = {
     "climate_sensitivity": 0.45,
 
     # Choice model
-    # Larger temperature = more exploration / less deterministic choice.
     "choice_temperature": 0.35,
     "wood_experiment_floor": 0.025,
     "hybrid_experiment_floor": 0.04,
@@ -58,7 +138,7 @@ DEFAULT_PARAMS = {
     "competence_decay": 0.006,
     "lock_in_decay_from_wood": 0.025,
 
-    # Project outcome probabilities
+    # Project outcome probabilities; can be modified by building type
     "base_failure_probability_wood": 0.10,
     "base_failure_probability_hybrid": 0.07,
     "failure_reduction_from_competence": 0.07,
@@ -76,7 +156,7 @@ DEFAULT_PARAMS = {
     "attractiveness_success_impact": 0.03,
     "attractiveness_failure_impact": 0.06,
 
-    # Developer mix
+    # Developer mix. In v0.3 building types also have public_share, so this is a fallback.
     "share_public_developers": 0.35,
     "share_pioneer_developers": 0.15,
     "share_conservative_developers": 0.50,

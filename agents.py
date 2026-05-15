@@ -35,6 +35,7 @@ class ProjectResult:
     cost_premium: float
     perceived_risk: float
     developer_type: str
+    building_type: str
 
 
 class DeveloperAgent(BaseAgent):
@@ -47,12 +48,7 @@ class DeveloperAgent(BaseAgent):
         self.hybrid_experience = 0.0
 
     def _softmax_choice(self, scores: dict) -> str:
-        """Probabilistic material choice.
-
-        Version 0.1 used deterministic argmax. That made concrete dominate completely
-        under default parameters. This version uses a softmax choice with small
-        experiment floors for wood and hybrid.
-        """
+        """Probabilistic material choice."""
         m = self.model
         p = m.params
         temperature = max(0.05, p.get("choice_temperature", 0.35))
@@ -63,7 +59,6 @@ class DeveloperAgent(BaseAgent):
             for k, v in scores.items()
         }
 
-        # Add minimum experimentation probabilities.
         weights["wood"] += p.get("wood_experiment_floor", 0.025)
         weights["hybrid"] += p.get("hybrid_experiment_floor", 0.04)
 
@@ -76,9 +71,10 @@ class DeveloperAgent(BaseAgent):
                 return material
         return "concrete"
 
-    def choose_material(self) -> str:
+    def choose_material(self, building_type: str) -> str:
         m = self.model
         p = m.params
+        bt = m.building_types[building_type]
 
         climate_weight = p["private_climate_weight"]
         policy_bonus = 0.0
@@ -87,7 +83,7 @@ class DeveloperAgent(BaseAgent):
 
         if self.developer_type == "public":
             climate_weight = p["public_climate_weight"]
-            policy_bonus = p["public_procurement_strength"] * 0.40
+            policy_bonus = p["public_procurement_strength"] * 0.40 * bt["policy_relevance"]
         elif self.developer_type == "pioneer":
             pioneer_bonus = p["pioneer_bonus"]
         elif self.developer_type == "conservative":
@@ -95,20 +91,22 @@ class DeveloperAgent(BaseAgent):
 
         shortage = max(0.0, m.wood_demand_pressure - m.supplier_capacity)
         wood_cost = (
-            p["wood_base_cost_premium"]
-            + p["capacity_shortage_penalty"] * shortage
+            bt.get("wood_base_cost_premium", p["wood_base_cost_premium"])
+            + p["capacity_shortage_penalty"] * shortage * bt.get("capacity_intensity", 1.0)
             - 0.10 * m.standardization
             - 0.06 * m.design_competence
             - 0.05 * m.contractor_competence
         )
         hybrid_cost = (
             p["hybrid_base_cost_premium"]
-            + 0.45 * p["capacity_shortage_penalty"] * shortage
+            + 0.45 * p["capacity_shortage_penalty"] * shortage * bt.get("capacity_intensity", 1.0)
             - 0.06 * m.standardization
             - 0.03 * m.design_competence
         )
 
-        wood_risk = (
+        risk_multiplier = bt.get("risk_multiplier", 1.0)
+
+        wood_risk = risk_multiplier * (
             0.48
             - 0.20 * m.trust_in_wood
             - 0.17 * m.design_competence
@@ -118,7 +116,7 @@ class DeveloperAgent(BaseAgent):
             - 0.10 * self.wood_experience
             + conservative_risk_extra
         )
-        hybrid_risk = (
+        hybrid_risk = risk_multiplier * (
             0.31
             - 0.12 * m.trust_in_wood
             - 0.09 * m.design_competence
@@ -128,10 +126,17 @@ class DeveloperAgent(BaseAgent):
             + 0.5 * conservative_risk_extra
         )
 
-        carbon_benefit_wood = p["carbon_policy_strength"] * climate_weight * p["climate_sensitivity"]
+        carbon_benefit_wood = (
+            p["carbon_policy_strength"]
+            * climate_weight
+            * p["climate_sensitivity"]
+            * bt.get("climate_relevance", 1.0)
+        )
         carbon_benefit_hybrid = 0.55 * carbon_benefit_wood
 
-        reference_bonus = 0.22 * m.reference_stock
+        # Building-type-specific reference effect: experience in the same segment matters.
+        segment_ref = m.segment_reference_stock.get(building_type, 0.0)
+        reference_bonus = 0.14 * m.reference_stock + 0.12 * segment_ref
         cluster_bonus = 0.12 * p["cluster_strength"]
 
         wood_score = (
@@ -162,7 +167,7 @@ class DeveloperAgent(BaseAgent):
         concrete_score = (
             0.10
             + 0.13 * m.concrete_lock_in
-            - 0.12 * p["carbon_policy_strength"] * climate_weight
+            - 0.12 * p["carbon_policy_strength"] * climate_weight * bt.get("climate_relevance", 1.0)
         )
 
         # Noise captures project-specific variation.
