@@ -256,7 +256,14 @@ with st.sidebar:
     building_types = copy.deepcopy(BUILDING_TYPES)
 
     params["years"] = st.slider("Simulaation pituus, vuotta", 5, 50, int(params["years"]))
-    params["projects_per_year"] = st.slider("Simuloituja rakennushankkeita vuodessa", 20, 500, int(params["projects_per_year"]), step=10)
+    params["projects_per_year"] = st.slider(
+        "Simuloituja päätöksiä vuodessa",
+        20, 1000, int(params["projects_per_year"]), step=20
+    )
+    st.caption(
+        "Tämä on simulaation otoskoko. Se ei kuvaa Suomen todellista hankemäärää, "
+        "vaan vaikuttaa lähinnä tuloskäyrien satunnaisvaihteluun."
+    )
     params["random_seed"] = st.number_input("Satunnaissiemen", value=int(params["random_seed"]), step=1)
 
     st.divider()
@@ -338,6 +345,18 @@ with st.sidebar:
 
     with st.expander("Materiaalivirrat ja viennin houkuttelevuus"):
         st.caption("Nämä kuvaavat, kuinka paljon kotimainen puurakentaminen saa käyttöönsä rakentamiseen soveltuvaa puutuotekapasiteettia suhteessa vientiin, investointeihin ja kestävään raaka-ainerajaan.")
+        params["annual_market_volume_index"] = st.slider(
+            "Todellisen markkinavolyymin indeksi",
+            0.25, 2.00, float(params.get("annual_market_volume_index", 1.00)), 0.05
+        )
+        params["wood_project_material_intensity"] = st.slider(
+            "Puuhankkeen materiaalikysyntäkerroin",
+            0.25, 2.00, float(params.get("wood_project_material_intensity", 1.00)), 0.05
+        )
+        params["hybrid_project_material_intensity"] = st.slider(
+            "Hybridihankkeen materiaalikysyntäkerroin",
+            0.10, 1.50, float(params.get("hybrid_project_material_intensity", 0.50)), 0.05
+        )
         params["max_material_capacity"] = st.slider(
             "Teollisen puutuotekapasiteetin realistinen yläraja",
             0.10, 1.00, float(params.get("max_material_capacity", 0.75)), 0.01
@@ -530,7 +549,7 @@ tts_line_chart(policy_df, height=220)
 
 st.subheader("Materiaalivirrat ja puutuotekapasiteetin rajoite")
 material_df = history.set_index("year")[[
-    "wood_demand_pressure",
+    "wood_material_demand",
     "material_capacity",
     "effective_material_capacity_limit",
     "material_bottleneck",
@@ -538,7 +557,7 @@ material_df = history.set_index("year")[[
     "domestic_allocation_factor",
 ]]
 material_df = material_df.rename(columns={
-    "wood_demand_pressure": "Puutuotekysyntäpaine",
+    "wood_material_demand": "Skaalattu puutuotekysyntä",
     "material_capacity": "Rakentamiseen soveltuva puutuotekapasiteetti",
     "effective_material_capacity_limit": "Efektiivinen kapasiteetin yläraja",
     "material_bottleneck": "Materiaalipullonkaula",

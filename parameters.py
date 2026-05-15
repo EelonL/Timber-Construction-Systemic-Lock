@@ -230,6 +230,13 @@ DEFAULT_PARAMS = {
     "material_bottleneck_cost_impact": 0.20,
     "material_bottleneck_risk_impact": 0.25,
 
+    # Market-volume scaling, v1.0.
+    # projects_per_year is a simulation sample size.
+    # annual_market_volume_index scales the real market volume represented by the sample.
+    "annual_market_volume_index": 1.00,
+    "wood_project_material_intensity": 1.00,
+    "hybrid_project_material_intensity": 0.50,
+
     # Export/domestic allocation logic.
     "export_market_attractiveness": 0.70,
     "domestic_construction_price_premium": 0.00,

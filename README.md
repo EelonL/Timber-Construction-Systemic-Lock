@@ -1,5 +1,27 @@
 # TTS PuuSiirtymä
 
+## Version 1.0
+
+Rakenteellinen tarkennus:
+
+- `projects_per_year` nimettiin käyttöliittymässä muotoon **Simuloituja päätöksiä vuodessa**.
+- Tämä muuttuja tulkitaan nyt simulaation otoskokona, ei Suomen todellisena rakennushankemääränä.
+- Materiaalirajoitteeseen lisättiin erillinen todellisen markkinavolyymin skaalaus:
+  - `annual_market_volume_index`
+  - `wood_project_material_intensity`
+  - `hybrid_project_material_intensity`
+- Materiaalipullonkaula lasketaan nyt skaalatusta puutuotekysynnästä eikä pelkästä markkinaosuuspaineesta.
+- Materiaalivirtojen kuvaajassa näytetään uusi muuttuja **Skaalattu puutuotekysyntä**.
+
+## Version 0.9.2
+
+Visuaalinen korjaus:
+
+- Vahvistettiin sivupalkin CSS-valitsimia, jotta Streamlit/BaseWeb-widgetit noudattaisivat paremmin TTS-värejä.
+- Lisättiin erillisiä tyylejä sliderille, checkboxille, number inputille, selectboxille ja sivupalkin tekstielementeille.
+- `.streamlit/config.toml` pidetään mukana, jotta Streamlitin oma teema saa TTS:n sinisen `primaryColor`-väriksi.
+- Satoshi-fontti toimii vain, jos fontti on käyttäjän selaimessa/koneella saatavilla; muuten käytetään varafontteja.
+
 ## Version 0.9.1
 
 Visuaalinen päivitys:

@@ -59,6 +59,7 @@ class WoodConstructionLockInModel(MesaModel):
         # supplier_capacity = delivery capability of the ecosystem
         # material_capacity = available construction-grade wood product/system capacity
         self.material_capacity = self.params.get("initial_material_capacity", 0.35)
+        self.wood_material_demand = 0.0
         self.material_bottleneck = 0.0
         self.material_capacity_utilization = 0.0
         self.material_price_pressure = 0.0
@@ -265,7 +266,16 @@ class WoodConstructionLockInModel(MesaModel):
         raw_limit = p.get("raw_material_limit", 0.90)
         self.effective_material_capacity_limit = clamp(min(industrial_limit, raw_limit), 0.05, 1.0)
 
-        demand = self.wood_demand_pressure
+        # projects_per_year is only a Monte Carlo sample size.
+        # Material demand is scaled separately by annual_market_volume_index.
+        demand = (
+            p.get("annual_market_volume_index", 1.0)
+            * (
+                self.wood_market_share * p.get("wood_project_material_intensity", 1.0)
+                + self.hybrid_market_share * p.get("hybrid_project_material_intensity", 0.5)
+            )
+        )
+        self.wood_material_demand = demand
         self.material_capacity_utilization = demand / max(0.01, self.material_capacity)
         self.material_bottleneck = max(0.0, demand - self.material_capacity)
 
@@ -521,6 +531,7 @@ class WoodConstructionLockInModel(MesaModel):
             "concrete_share": self.concrete_market_share,
             "wood_like_share": self.wood_demand_pressure,
             "wood_demand_pressure": self.wood_demand_pressure,
+            "wood_material_demand": self.wood_material_demand,
             "effective_carbon_policy_strength": self.effective_carbon_policy_strength,
             "trust_in_wood": self.trust_in_wood,
             "design_competence": self.design_competence,
