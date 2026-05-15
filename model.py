@@ -114,36 +114,37 @@ class WoodConstructionLockInModel(MesaModel):
                 -0.05,
                 p["wood_base_cost_premium"]
                 + p["capacity_shortage_penalty"] * shortage
-                - 0.08 * self.standardization
-                - 0.05 * self.design_competence
-                - 0.04 * self.contractor_competence,
+                - 0.10 * self.standardization
+                - 0.06 * self.design_competence
+                - 0.05 * self.contractor_competence,
             )
         if material == "hybrid":
             return max(
                 -0.03,
                 p["hybrid_base_cost_premium"]
-                + 0.5 * p["capacity_shortage_penalty"] * shortage
-                - 0.05 * self.standardization,
+                + 0.45 * p["capacity_shortage_penalty"] * shortage
+                - 0.06 * self.standardization
+                - 0.03 * self.design_competence,
             )
         return 0.0
 
     def _estimate_perceived_risk(self, material: str) -> float:
         if material == "wood":
             return clamp(
-                0.55
-                - 0.18 * self.trust_in_wood
-                - 0.14 * self.design_competence
-                - 0.12 * self.contractor_competence
-                - 0.10 * self.standardization
+                0.48
+                - 0.20 * self.trust_in_wood
+                - 0.17 * self.design_competence
+                - 0.14 * self.contractor_competence
+                - 0.12 * self.standardization
                 - 0.08 * self.regulatory_routine
             )
         if material == "hybrid":
             return clamp(
-                0.35
-                - 0.10 * self.trust_in_wood
-                - 0.07 * self.design_competence
-                - 0.06 * self.contractor_competence
-                - 0.05 * self.standardization
+                0.31
+                - 0.12 * self.trust_in_wood
+                - 0.09 * self.design_competence
+                - 0.07 * self.contractor_competence
+                - 0.06 * self.standardization
                 - 0.04 * self.regulatory_routine
             )
         return 0.10
@@ -172,6 +173,7 @@ class WoodConstructionLockInModel(MesaModel):
             + p["trust_success_impact"] * success_signal * 10
             - p["trust_failure_impact"] * failure_signal * 5
             + 0.01 * p["cluster_strength"]
+            + 0.004 * p["carbon_policy_strength"]
         )
 
         competence_learning = p["learning_rate"] * wood_like_share
@@ -193,7 +195,7 @@ class WoodConstructionLockInModel(MesaModel):
             + p["standardization_learning_rate"] * wood_like_share
             + 0.04 * p["standardization_investment"]
             + 0.03 * p["cluster_strength"]
-            - 0.01
+            - 0.008
         )
 
         self.reference_stock = clamp(
@@ -212,7 +214,7 @@ class WoodConstructionLockInModel(MesaModel):
         self.concrete_lock_in = clamp(
             self.concrete_lock_in
             - p["lock_in_decay_from_wood"] * wood_like_share
-            + 0.005 * (1 - wood_like_share)
+            + 0.004 * (1 - wood_like_share)
         )
 
     def step(self):

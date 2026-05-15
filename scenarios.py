@@ -12,6 +12,7 @@ SCENARIOS = {
             "education_investment": 0.80,
             "education_response_rate": 0.08,
             "initial_education_capacity": 0.40,
+            "initial_workforce": 0.35,
         },
     },
     "Julkinen kysyntäveturi": {
@@ -19,6 +20,8 @@ SCENARIOS = {
         "updates": {
             "public_procurement_strength": 0.80,
             "share_public_developers": 0.45,
+            "wood_experiment_floor": 0.04,
+            "hybrid_experiment_floor": 0.06,
         },
     },
     "Kysyntä + kapasiteettituki": {
@@ -28,13 +31,17 @@ SCENARIOS = {
             "supplier_investment_support": 0.75,
             "standardization_investment": 0.70,
             "cluster_strength": 0.45,
+            "wood_experiment_floor": 0.04,
+            "hybrid_experiment_floor": 0.06,
         },
     },
     "Hiiliohjaus": {
         "description": "Vähähiilisyys vaikuttaa aidosti tarjousvertailuun ja materiaalivalintoihin.",
         "updates": {
             "carbon_policy_strength": 0.85,
-            "climate_sensitivity": 0.55,
+            "climate_sensitivity": 0.60,
+            "wood_experiment_floor": 0.035,
+            "hybrid_experiment_floor": 0.055,
         },
     },
     "Alueellinen klusteri": {
@@ -45,6 +52,9 @@ SCENARIOS = {
             "supplier_investment_support": 0.55,
             "education_investment": 0.65,
             "public_procurement_strength": 0.55,
+            "choice_temperature": 0.42,
+            "wood_experiment_floor": 0.05,
+            "hybrid_experiment_floor": 0.07,
         },
     },
     "Negatiivinen shokki": {

@@ -1,9 +1,9 @@
-import random
+import math
 from dataclasses import dataclass
 
 try:
     from mesa import Agent as MesaAgent
-except Exception:  # Keeps the app usable even if Mesa import changes.
+except Exception:
     class MesaAgent:
         def __init__(self, *args, **kwargs):
             pass
@@ -46,6 +46,36 @@ class DeveloperAgent(BaseAgent):
         self.wood_experience = 0.0
         self.hybrid_experience = 0.0
 
+    def _softmax_choice(self, scores: dict) -> str:
+        """Probabilistic material choice.
+
+        Version 0.1 used deterministic argmax. That made concrete dominate completely
+        under default parameters. This version uses a softmax choice with small
+        experiment floors for wood and hybrid.
+        """
+        m = self.model
+        p = m.params
+        temperature = max(0.05, p.get("choice_temperature", 0.35))
+
+        max_score = max(scores.values())
+        weights = {
+            k: math.exp((v - max_score) / temperature)
+            for k, v in scores.items()
+        }
+
+        # Add minimum experimentation probabilities.
+        weights["wood"] += p.get("wood_experiment_floor", 0.025)
+        weights["hybrid"] += p.get("hybrid_experiment_floor", 0.04)
+
+        total = sum(weights.values())
+        r = m.random.random() * total
+        cumulative = 0.0
+        for material, weight in weights.items():
+            cumulative += weight
+            if r <= cumulative:
+                return material
+        return "concrete"
+
     def choose_material(self) -> str:
         m = self.model
         p = m.params
@@ -57,7 +87,7 @@ class DeveloperAgent(BaseAgent):
 
         if self.developer_type == "public":
             climate_weight = p["public_climate_weight"]
-            policy_bonus = p["public_procurement_strength"] * 0.35
+            policy_bonus = p["public_procurement_strength"] * 0.40
         elif self.developer_type == "pioneer":
             pioneer_bonus = p["pioneer_bonus"]
         elif self.developer_type == "conservative":
@@ -67,41 +97,42 @@ class DeveloperAgent(BaseAgent):
         wood_cost = (
             p["wood_base_cost_premium"]
             + p["capacity_shortage_penalty"] * shortage
-            - 0.08 * m.standardization
-            - 0.05 * m.design_competence
-            - 0.04 * m.contractor_competence
+            - 0.10 * m.standardization
+            - 0.06 * m.design_competence
+            - 0.05 * m.contractor_competence
         )
         hybrid_cost = (
             p["hybrid_base_cost_premium"]
-            + 0.5 * p["capacity_shortage_penalty"] * shortage
-            - 0.05 * m.standardization
+            + 0.45 * p["capacity_shortage_penalty"] * shortage
+            - 0.06 * m.standardization
+            - 0.03 * m.design_competence
         )
 
         wood_risk = (
-            0.55
+            0.48
             - 0.20 * m.trust_in_wood
-            - 0.16 * m.design_competence
-            - 0.12 * m.contractor_competence
-            - 0.10 * m.regulatory_routine
-            - 0.10 * m.standardization
-            - 0.08 * self.wood_experience
+            - 0.17 * m.design_competence
+            - 0.14 * m.contractor_competence
+            - 0.11 * m.regulatory_routine
+            - 0.12 * m.standardization
+            - 0.10 * self.wood_experience
             + conservative_risk_extra
         )
         hybrid_risk = (
-            0.35
+            0.31
             - 0.12 * m.trust_in_wood
-            - 0.08 * m.design_competence
-            - 0.06 * m.contractor_competence
-            - 0.06 * m.regulatory_routine
-            - 0.04 * self.hybrid_experience
+            - 0.09 * m.design_competence
+            - 0.07 * m.contractor_competence
+            - 0.07 * m.regulatory_routine
+            - 0.05 * self.hybrid_experience
             + 0.5 * conservative_risk_extra
         )
 
         carbon_benefit_wood = p["carbon_policy_strength"] * climate_weight * p["climate_sensitivity"]
         carbon_benefit_hybrid = 0.55 * carbon_benefit_wood
 
-        reference_bonus = 0.18 * m.reference_stock
-        cluster_bonus = 0.10 * p["cluster_strength"]
+        reference_bonus = 0.22 * m.reference_stock
+        cluster_bonus = 0.12 * p["cluster_strength"]
 
         wood_score = (
             carbon_benefit_wood
@@ -109,39 +140,41 @@ class DeveloperAgent(BaseAgent):
             + pioneer_bonus
             + reference_bonus
             + cluster_bonus
-            + 0.10 * self.wood_experience
+            + 0.12 * self.wood_experience
+            + 0.06 * m.attractiveness
             - p["cost_sensitivity"] * wood_cost
             - p["risk_sensitivity"] * clamp(wood_risk)
-            - 0.10 * m.concrete_lock_in
+            - 0.08 * m.concrete_lock_in
         )
 
         hybrid_score = (
             carbon_benefit_hybrid
-            + 0.55 * policy_bonus
+            + 0.60 * policy_bonus
             + 0.55 * pioneer_bonus
-            + 0.50 * reference_bonus
-            + 0.05 * self.hybrid_experience
+            + 0.55 * reference_bonus
+            + 0.06 * self.hybrid_experience
+            + 0.04 * m.attractiveness
             - 0.75 * p["cost_sensitivity"] * hybrid_cost
             - 0.65 * p["risk_sensitivity"] * clamp(hybrid_risk)
-            - 0.05 * m.concrete_lock_in
+            - 0.04 * m.concrete_lock_in
         )
 
         concrete_score = (
-            0.12
-            + 0.18 * m.concrete_lock_in
-            - 0.10 * p["carbon_policy_strength"] * climate_weight
+            0.10
+            + 0.13 * m.concrete_lock_in
+            - 0.12 * p["carbon_policy_strength"] * climate_weight
         )
 
-        # Add small noise so the system does not become deterministic.
-        wood_score += m.random.normalvariate(0, 0.04)
-        hybrid_score += m.random.normalvariate(0, 0.035)
+        # Noise captures project-specific variation.
+        wood_score += m.random.normalvariate(0, 0.035)
+        hybrid_score += m.random.normalvariate(0, 0.030)
         concrete_score += m.random.normalvariate(0, 0.025)
 
-        if wood_score >= hybrid_score and wood_score >= concrete_score:
-            return "wood"
-        if hybrid_score >= concrete_score:
-            return "hybrid"
-        return "concrete"
+        return self._softmax_choice({
+            "wood": wood_score,
+            "hybrid": hybrid_score,
+            "concrete": concrete_score,
+        })
 
     def update_experience(self, material: str, success: bool):
         delta = 0.06 if success else 0.02
@@ -176,7 +209,8 @@ class SupplierAgent(BaseAgent):
         else:
             growth = 0.0
 
-        m.supplier_capacity = clamp(m.supplier_capacity + growth - p["capacity_depreciation"])
+        min_capacity = p.get("min_supplier_capacity", 0.05)
+        m.supplier_capacity = clamp(m.supplier_capacity + growth - p["capacity_depreciation"], min_capacity, 1.0)
 
 
 class EducationAgent(BaseAgent):
@@ -203,14 +237,14 @@ class EducationAgent(BaseAgent):
         m.workforce = clamp(
             m.workforce
             + graduating
-            - 0.015  # retirement / attrition
+            - 0.012
         )
 
         m.education_capacity = clamp(
             m.education_capacity
             + 0.04 * p["education_investment"]
             + 0.02 * p["cluster_strength"]
-            - 0.01
+            - 0.008
         )
 
 
@@ -225,5 +259,5 @@ class RegulatorAgent(BaseAgent):
             m.regulatory_routine
             + learning
             + 0.015 * p["cluster_strength"]
-            - 0.005
+            - 0.004
         )

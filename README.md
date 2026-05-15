@@ -4,6 +4,15 @@ Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumises
 
 Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.
 
+## Version 0.2
+
+Korjaukset version 0.1 jälkeen:
+
+- Materiaalivalinta muutettiin deterministisestä argmax-valinnasta todennäköisyyspohjaiseksi softmax-valinnaksi.
+- Puulle ja hybridille lisättiin pieni minimikokeiluosuus.
+- Puutuoteteollinen kapasiteetti ei enää rapaudu täysin nollaan.
+- Skenaarioiden erot näkyvät paremmin.
+
 ## Mitä malli kuvaa?
 
 Malli kuvaa, miten puurakentamisen markkinaosuus voi kehittyä, kun rakennuttajat, puutuotetoimittajat, suunnittelija-/urakoitsijaverkostot, viranomaiset ja koulutusjärjestelmä oppivat eri tahtiin.

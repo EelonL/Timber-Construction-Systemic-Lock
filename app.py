@@ -3,7 +3,6 @@ import streamlit as st
 
 from model import WoodConstructionLockInModel
 from scenarios import SCENARIOS, get_params_for_scenario
-from parameters import DEFAULT_PARAMS
 
 
 st.set_page_config(
@@ -84,7 +83,19 @@ with st.sidebar:
         0.0, 1.0, float(params["initial_concrete_lock_in"]), 0.05
     )
 
-    run_button = st.button("Aja simulaatio", type="primary")
+    with st.expander("Lisäasetukset"):
+        params["choice_temperature"] = st.slider(
+            "Materiaalivalinnan satunnaisuus / kokeiluhalukkuus",
+            0.05, 0.80, float(params["choice_temperature"]), 0.05
+        )
+        params["wood_experiment_floor"] = st.slider(
+            "Puun minimikokeiluosuus",
+            0.0, 0.15, float(params["wood_experiment_floor"]), 0.005
+        )
+        params["hybrid_experiment_floor"] = st.slider(
+            "Hybridin minimikokeiluosuus",
+            0.0, 0.20, float(params["hybrid_experiment_floor"]), 0.005
+        )
 
 
 @st.cache_data(show_spinner=False)
@@ -96,7 +107,6 @@ def run_model_cached(params_tuple):
     return history, projects
 
 
-# Convert params to a hashable tuple for Streamlit cache
 params_tuple = tuple(sorted(params.items()))
 history, projects = run_model_cached(params_tuple)
 
@@ -171,11 +181,12 @@ Tässä mallissa puurakentaminen pääsee kasvu-uralle vain, jos useampi mekanis
 - koulutus tuottaa osaajia viiveellä,
 - julkinen kysyntä ja hiiliohjaus voivat siirtää rakennuttajien päätöskynnystä.
 
-Jos vain yksi vipu muuttuu, järjestelmä voi edelleen jäädä lukkiutuneeksi.
+Version 0.2 muutos: materiaalivalinta on todennäköisyyspohjainen, ei puhdas voittaja-vie-kaiken-valinta. 
+Siksi myös lukkiutuneessa järjestelmässä voi syntyä pieni määrä puu- ja hybridirakentamisen kokeiluja.
 """
 )
 
 st.info(
-    "Version 0.1: parametrien arvot ovat alustavia. Seuraava askel olisi validoida parametreja asiantuntijahaastatteluilla "
+    "Version 0.2: parametrien arvot ovat edelleen alustavia. Seuraava askel olisi validoida parametreja asiantuntijahaastatteluilla "
     "ja lisätä erilliset rakennustyypit, esimerkiksi koulut, päiväkodit, kerrostalot ja toimitilat."
 )
