@@ -128,10 +128,10 @@ st.markdown(
 
 
 def tts_line_chart(data: pd.DataFrame, height: int = 340):
-    """Render a TTS-themed multi-line chart.
+    """Render a TTS-themed interactive multi-line chart.
 
-    Accepts the same wide dataframe format used by st.line_chart:
-    index = x-axis, columns = series.
+    - Click legend items to show/hide or highlight lines.
+    - Legend is arranged in columns to reduce truncated labels.
     """
     if data is None or data.empty:
         st.info("Ei näytettävää dataa.")
@@ -139,8 +139,23 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
 
     chart_data = data.copy()
     x_name = chart_data.index.name or "index"
-    chart_data = chart_data.reset_index().rename(columns={chart_data.index.name or "index": x_name})
-    long_df = chart_data.melt(id_vars=[x_name], var_name="Muuttuja", value_name="Arvo")
+    chart_data = chart_data.reset_index().rename(
+        columns={chart_data.index.name or "index": x_name}
+    )
+    long_df = chart_data.melt(
+        id_vars=[x_name],
+        var_name="Muuttuja",
+        value_name="Arvo"
+    )
+
+    # Interactive legend selection.
+    # Empty selection = all lines visible.
+    legend_selection = alt.selection_point(
+        fields=["Muuttuja"],
+        bind="legend",
+        toggle=True,
+        empty=True,
+    )
 
     chart = (
         alt.Chart(long_df)
@@ -151,7 +166,22 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
             color=alt.Color(
                 "Muuttuja:N",
                 scale=alt.Scale(range=TTS_CHART_COLORS),
-                legend=alt.Legend(title=None, orient="bottom"),
+                legend=alt.Legend(
+                    title=None,
+                    orient="bottom",
+                    direction="horizontal",
+                    columns=3,
+                    labelLimit=260,
+                    symbolLimit=50,
+                    labelFontSize=13,
+                    symbolSize=120,
+                    symbolStrokeWidth=4,
+                ),
+            ),
+            opacity=alt.condition(
+                legend_selection,
+                alt.value(1.0),
+                alt.value(0.12),
             ),
             tooltip=[
                 alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
@@ -159,6 +189,7 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
                 alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
             ],
         )
+        .add_params(legend_selection)
         .properties(height=height)
         .configure_axis(
             labelColor=TTS_COLORS["dark_blue"],
@@ -166,8 +197,14 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340):
             gridColor="#E8EEF9",
         )
         .configure_view(strokeWidth=0)
-        .configure_legend(labelColor=TTS_COLORS["dark_blue"])
+        .configure_legend(
+            labelColor=TTS_COLORS["dark_blue"],
+            titleColor=TTS_COLORS["dark_blue"],
+            labelFont="Satoshi, Aptos, Segoe UI, Arial",
+            titleFont="Satoshi, Aptos, Segoe UI, Arial",
+        )
     )
+
     st.altair_chart(chart, use_container_width=True)
 
 
