@@ -7,11 +7,13 @@ The model is meant for exploring mechanisms and scenarios, not forecasting.
 """
 
 BUILDING_TYPES = {
+    # The shares below are rough starting assumptions based on recent Finnish market observations
+    # discussed during model development. They should be calibrated later.
     "Kerrostalot": {
         "project_share": 0.28,
         "initial_wood_share": 0.03,
         "initial_hybrid_share": 0.08,
-        "wood_base_cost_premium": 0.06,
+        "wood_base_cost_premium": 0.10,
         "base_failure_probability_wood": 0.12,
         "base_failure_probability_hybrid": 0.08,
         "risk_multiplier": 1.20,
@@ -24,7 +26,7 @@ BUILDING_TYPES = {
         "project_share": 0.10,
         "initial_wood_share": 0.55,
         "initial_hybrid_share": 0.10,
-        "wood_base_cost_premium": 0.02,
+        "wood_base_cost_premium": 0.03,
         "base_failure_probability_wood": 0.07,
         "base_failure_probability_hybrid": 0.05,
         "risk_multiplier": 0.75,
@@ -37,7 +39,7 @@ BUILDING_TYPES = {
         "project_share": 0.14,
         "initial_wood_share": 0.28,
         "initial_hybrid_share": 0.12,
-        "wood_base_cost_premium": 0.04,
+        "wood_base_cost_premium": 0.05,
         "base_failure_probability_wood": 0.08,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 0.90,
@@ -50,7 +52,7 @@ BUILDING_TYPES = {
         "project_share": 0.16,
         "initial_wood_share": 0.16,
         "initial_hybrid_share": 0.12,
-        "wood_base_cost_premium": 0.05,
+        "wood_base_cost_premium": 0.06,
         "base_failure_probability_wood": 0.09,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 0.95,
@@ -76,7 +78,7 @@ BUILDING_TYPES = {
         "project_share": 0.16,
         "initial_wood_share": 0.08,
         "initial_hybrid_share": 0.15,
-        "wood_base_cost_premium": 0.06,
+        "wood_base_cost_premium": 0.07,
         "base_failure_probability_wood": 0.09,
         "base_failure_probability_hybrid": 0.06,
         "risk_multiplier": 1.00,
@@ -105,6 +107,13 @@ DEFAULT_PARAMS = {
     "initial_workforce": 0.25,
     "initial_attractiveness": 0.28,
     "initial_concrete_lock_in": 0.80,
+
+    # Trust dynamics
+    # Trust is capped below 1.0 because even mature markets retain
+    # material preferences, institutional inertia and residual perceived risk.
+    "trust_ceiling": 0.82,
+    "trust_baseline": 0.28,
+    "trust_decay": 0.012,
 
     # Cost and risk; can be modified by building type
     "wood_base_cost_premium": 0.08,

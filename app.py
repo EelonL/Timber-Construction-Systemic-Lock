@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🌲 TTS PuuSiirtymä")
 st.caption(
     "Agenttipohjainen demonstraatiomalli puurakentamisen lukkiutumisesta ja mahdollisesta siirtymästä. "
-    "Versio 0.3 erottaa rakennustyypit, jotta siirtymää voidaan tarkastella segmenteittäin."
+    "Versio 0.4 erottaa rakennustyypit, jotta siirtymää voidaan tarkastella segmenteittäin."
 )
 
 with st.sidebar:
@@ -73,6 +73,20 @@ with st.sidebar:
         "Betonijärjestelmän lukkiutuminen alussa",
         0.0, 1.0, float(params["initial_concrete_lock_in"]), 0.05
     )
+
+    with st.expander("Luottamuksen dynamiikka"):
+        params["trust_ceiling"] = st.slider(
+            "Luottamuksen yläraja",
+            0.50, 0.95, float(params.get("trust_ceiling", 0.82)), 0.01
+        )
+        params["trust_baseline"] = st.slider(
+            "Luottamuksen perustaso",
+            0.00, 0.60, float(params.get("trust_baseline", 0.28)), 0.01
+        )
+        params["trust_decay"] = st.slider(
+            "Luottamuksen palautuminen perustasoa kohti",
+            0.000, 0.050, float(params.get("trust_decay", 0.012)), 0.001
+        )
 
     with st.expander("Rakennustyyppien lähtöosuudet"):
         st.caption(
@@ -238,7 +252,7 @@ with st.expander("Näytä hankeloki"):
 st.subheader("Tulkinta")
 st.markdown(
     """
-Versio 0.3 erottaa rakennustyypit. Tämä on tärkeää, koska puurakentaminen ei ole samassa asemassa eri segmenteissä:
+Versio 0.4 erottaa rakennustyypit. Tämä on tärkeää, koska puurakentaminen ei ole samassa asemassa eri segmenteissä:
 
 - pienkerrostaloissa puu voi olla jo varsin vahva,
 - opetusrakennuksissa ja julkisissa hankkeissa poliittinen ohjaus voi vaikuttaa paljon,
@@ -250,6 +264,6 @@ Mallin tarkoitus ei ole ennustaa todellisia markkinaosuuksia, vaan tutkia, miss�
 )
 
 st.info(
-    "Version 0.3: rakennustyyppien lähtöarvot ovat alustavia ja kannattaa kalibroida tilastoilla. "
+    "Version 0.4: luottamusmuuttujaan lisättiin yläraja, vaimeneva kasvu ja hidas palautuminen kohti perustasoa. Rakennustyyppien lähtöarvot ovat edelleen alustavia. "
     "Seuraava askel voisi olla todellisen markkinaosuusdatan ja hankemäärien lisääminen rakennustyypeittäin."
 )

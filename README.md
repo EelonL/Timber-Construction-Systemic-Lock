@@ -1,5 +1,17 @@
 # TTS PuuSiirtymä
 
+## Version 0.4
+
+Korjaus luottamusmuuttujaan:
+
+- `trust_in_wood` ei enää nouse helposti arvoon 1.0.
+- Luottamukselle lisättiin yläraja `trust_ceiling`, oletuksena 0.82.
+- Onnistuneiden hankkeiden vaikutus vaimenee, kun luottamus lähestyy ylärajaa.
+- Epäonnistumiset vaikuttavat voimakkaammin, kun luottamus on korkealla.
+- Luottamus palautuu hitaasti kohti perustasoa, jos sitä ei vahvisteta.
+- Käyttöliittymään lisättiin luottamuksen dynamiikan säätimet.
+
+
 Agenttipohjainen demonstraatiomalli puurakentamisen systeemisestä lukkiutumisesta ja mahdollisesta markkinasiirtymästä.
 
 Malli on tarkoitettu työpaja-, koulutus- ja tutkimusidean havainnollistamiseen. Se ei ole ennustemalli.

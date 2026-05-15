@@ -228,12 +228,51 @@ class WoodConstructionLockInModel(MesaModel):
         if self.params.get("shock_year") == self.year:
             failure_signal += self.params.get("shock_strength", 0.20)
 
+        # Trust dynamics:
+        # Version 0.3 allowed trust to saturate at 1.0 too easily.
+        # In reality, even a mature wood-construction market retains
+        # residual distrust, material preferences and institutional inertia.
+        #
+        # Therefore:
+        # - successful projects have diminishing returns as trust approaches a ceiling,
+        # - failures hurt more when trust is high,
+        # - policy/cluster effects also have diminishing returns,
+        # - trust slowly drifts back toward a baseline if it is not reinforced.
+        trust_ceiling = p.get("trust_ceiling", 0.82)
+        trust_baseline = p.get("trust_baseline", 0.28)
+        trust_decay = p.get("trust_decay", 0.012)
+
+        trust_headroom = max(0.0, trust_ceiling - self.trust_in_wood)
+
+        success_gain = (
+            p["trust_success_impact"]
+            * success_signal
+            * 10
+            * trust_headroom
+        )
+
+        failure_loss = (
+            p["trust_failure_impact"]
+            * failure_signal
+            * 5
+            * (0.5 + self.trust_in_wood)
+        )
+
+        policy_gain = (
+            (0.01 * p["cluster_strength"] + 0.004 * p["carbon_policy_strength"])
+            * trust_headroom
+        )
+
+        mean_reversion = trust_decay * max(0.0, self.trust_in_wood - trust_baseline)
+
         self.trust_in_wood = clamp(
             self.trust_in_wood
-            + p["trust_success_impact"] * success_signal * 10
-            - p["trust_failure_impact"] * failure_signal * 5
-            + 0.01 * p["cluster_strength"]
-            + 0.004 * p["carbon_policy_strength"]
+            + success_gain
+            - failure_loss
+            + policy_gain
+            - mean_reversion,
+            0.0,
+            trust_ceiling
         )
 
         competence_learning = p["learning_rate"] * wood_like_share
