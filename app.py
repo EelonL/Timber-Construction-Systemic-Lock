@@ -507,7 +507,7 @@ c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Puun osuus lopussa", f"{latest['wood_share']*100:.1f} %")
 c2.metric("Puu + hybridi lopussa", f"{latest['wood_like_share']*100:.1f} %")
 c3.metric("Luottamus puuhun", f"{latest['trust_in_wood']:.2f}")
-c4.metric("Puutuoteteollinen toimituskyvykkyys", f"{latest['supplier_capacity']:.2f}")
+c4.metric("Puutuotetoimituskyky", f"{latest['supplier_capacity']:.2f}")
 c5.metric("Materiaalipullonkaula", f"{latest['material_bottleneck']:.2f}")
 
 st.subheader("Koko simuloidun markkinan markkinaosuudet")
