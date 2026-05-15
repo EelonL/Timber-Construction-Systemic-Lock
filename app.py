@@ -607,11 +607,60 @@ history, projects, segments = run_model_cached(params_tuple, building_types_for_
 latest = history.iloc[-1]
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Puun osuus lopussa", f"{latest['wood_share']*100:.1f} %")
-c2.metric("Puu + hybridi lopussa", f"{latest['wood_like_share']*100:.1f} %")
-c3.metric("Luottamus puuhun", f"{latest['trust_in_wood']:.2f}")
-c4.metric("Puutuoteteollinen toimituskyvykkyys", f"{latest['supplier_capacity']:.2f}")
-c5.metric("Materiaalipullonkaula", f"{latest['material_bottleneck']:.2f}")
+
+c1.metric(
+    "Puun osuus lopussa",
+    f"{latest['wood_share']*100:.1f} %",
+    help=(
+        "Puun osuus simuloidun markkinan lopputilanteessa. "
+        "Arvo kuvaa puun markkinaosuutta mallin viimeisenä vuonna."
+    ),
+)
+
+c2.metric(
+    "Puu + hybridi lopussa",
+    f"{latest['wood_like_share']*100:.1f} %",
+    help=(
+        "Puun ja hybridihankkeiden yhdistetty vaikutus. "
+        "Hybridihankkeet lasketaan mallissa puolikkaana puumaisena kysyntänä, "
+        "koska ne käyttävät puutuotteita mutta eivät ole kokonaan puurakenteisia."
+    ),
+)
+
+c3.metric(
+    "Luottamus puuhun",
+    f"{latest['trust_in_wood']:.2f}",
+    help=(
+        "Kuvaa rakennusmarkkinan koettua luottamusta puurakentamisen hallittavuuteen. "
+        "Arvo ei tarkoita, että kaikki luottaisivat puuhun, vaan että riski, kokemus, "
+        "onnistuneet hankkeet ja järjestelmän vakiintuminen ovat parantaneet puun asemaa."
+    ),
+)
+
+c4.metric(
+    "Puutuotetoimituskyky",
+    f"{latest['supplier_capacity']:.2f}",
+    help=(
+        "Kuvaa puutuoteteollisuuden ja toimitusketjun kykyä palvella puurakentamisen kysyntää. "
+        "Arvoon vaikuttavat kapasiteetti, kysyntä, investointituki, klusterit ja oppiminen. "
+        "Kyse on normalisoidusta indeksistä, ei fyysisestä kuutiometrimäärästä."
+    ),
+)
+
+c5.metric(
+    "Materiaalipullonkaula",
+    f"{latest['material_bottleneck']:.2f}",
+    help=(
+        "Kuvaa tilannetta, jossa puurakentamisen skaalattu materiaalikysyntä ylittää "
+        "rakentamiseen soveltuvan puutuotekapasiteetin. Mitä suurempi arvo, sitä enemmän "
+        "pullonkaula nostaa kustannusepävarmuutta ja toimitusketjuriskiä."
+    ),
+)
+
+st.caption(
+    "Mittarit ovat normalisoituja malliarvoja ja viimeisen simulaatiovuoden tuloksia. "
+    "Ne soveltuvat parhaiten skenaarioiden vertailuun, eivät suoriksi ennusteiksi."
+)
 
 st.subheader("Koko simuloidun markkinan markkinaosuudet")
 market_df = history.set_index("year")[["wood_share", "hybrid_share", "concrete_share"]]
