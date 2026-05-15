@@ -177,9 +177,8 @@ def charts_to_zip_bytes(chart_exports: list[tuple[str, alt.Chart]]) -> bytes:
 def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None = None):
     """Render a TTS-themed interactive multi-line chart.
 
-    - Click legend items to show/hide or highlight lines.
-    - Legend is arranged in columns to reduce truncated labels.
-    - If chart_name is given, the chart is registered for PNG/ZIP export.
+    - Screen version: click legend items to show/hide or highlight lines.
+    - Export version: static PNG with title and full legend labels.
     """
     if data is None or data.empty:
         st.info("Ei näytettävää dataa.")
@@ -193,11 +192,35 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
     long_df = chart_data.melt(
         id_vars=[x_name],
         var_name="Muuttuja",
-        value_name="Arvo"
+        value_name="Arvo",
     )
 
-    # Interactive legend selection.
-    # Empty selection = all lines visible.
+    base = alt.Chart(long_df).encode(
+        x=alt.X(f"{x_name}:Q", title="Vuosi"),
+        y=alt.Y("Arvo:Q", title=None),
+        color=alt.Color(
+            "Muuttuja:N",
+            scale=alt.Scale(range=TTS_CHART_COLORS),
+            legend=alt.Legend(
+                title=None,
+                orient="bottom",
+                direction="horizontal",
+                columns=2,
+                labelLimit=500,
+                symbolLimit=500,
+                labelFontSize=13,
+                symbolSize=120,
+                symbolStrokeWidth=4,
+            ),
+        ),
+        tooltip=[
+            alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
+            alt.Tooltip("Muuttuja:N", title="Muuttuja"),
+            alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
+        ],
+    )
+
+    # Screen version: interactive legend.
     legend_selection = alt.selection_point(
         fields=["Muuttuja"],
         bind="legend",
@@ -205,37 +228,14 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
         empty=True,
     )
 
-    chart = (
-        alt.Chart(long_df)
-        .mark_line(strokeWidth=3)
+    screen_chart = (
+        base.mark_line(strokeWidth=3)
         .encode(
-            x=alt.X(f"{x_name}:Q", title="Vuosi"),
-            y=alt.Y("Arvo:Q", title=None),
-            color=alt.Color(
-                "Muuttuja:N",
-                scale=alt.Scale(range=TTS_CHART_COLORS),
-                legend=alt.Legend(
-                    title=None,
-                    orient="bottom",
-                    direction="horizontal",
-                    columns=3,
-                    labelLimit=260,
-                    symbolLimit=50,
-                    labelFontSize=13,
-                    symbolSize=120,
-                    symbolStrokeWidth=4,
-                ),
-            ),
             opacity=alt.condition(
                 legend_selection,
                 alt.value(1.0),
                 alt.value(0.12),
-            ),
-            tooltip=[
-                alt.Tooltip(f"{x_name}:Q", title="Vuosi"),
-                alt.Tooltip("Muuttuja:N", title="Muuttuja"),
-                alt.Tooltip("Arvo:Q", title="Arvo", format=".3f"),
-            ],
+            )
         )
         .add_params(legend_selection)
         .properties(height=height)
@@ -248,32 +248,59 @@ def tts_line_chart(data: pd.DataFrame, height: int = 340, chart_name: str | None
         .configure_legend(
             labelColor=TTS_COLORS["dark_blue"],
             titleColor=TTS_COLORS["dark_blue"],
-            labelFont="Satoshi, Aptos, Segoe UI, Arial",
-            titleFont="Satoshi, Aptos, Segoe UI, Arial",
+            labelFont="Arial",
+            titleFont="Arial",
+        )
+    )
+
+    # Export version: static chart. This avoids PNG export problems with interactive legends.
+    export_chart = (
+        base.mark_line(strokeWidth=3)
+        .properties(
+            width=1000,
+            height=height,
+            title=alt.TitleParams(
+                text=chart_name or "",
+                anchor="start",
+                fontSize=24,
+                fontWeight="bold",
+                color=TTS_COLORS["dark_blue"],
+                dy=-8,
+            ),
+        )
+        .configure_axis(
+            labelColor=TTS_COLORS["dark_blue"],
+            titleColor=TTS_COLORS["dark_blue"],
+            gridColor="#E8EEF9",
+            labelFont="Arial",
+            titleFont="Arial",
+            labelFontSize=13,
+            titleFontSize=15,
+            titleFontWeight="bold",
+        )
+        .configure_view(strokeWidth=0)
+        .configure_legend(
+            labelColor=TTS_COLORS["dark_blue"],
+            titleColor=TTS_COLORS["dark_blue"],
+            labelFont="Arial",
+            titleFont="Arial",
+            labelFontSize=13,
+            symbolSize=120,
+            symbolStrokeWidth=4,
+        )
+        .configure_title(
+            font="Arial",
+            color=TTS_COLORS["dark_blue"],
+            fontSize=24,
+            fontWeight="bold",
+            anchor="start",
         )
     )
 
     if chart_name:
-        export_chart = chart.properties(
-            title=alt.TitleParams(
-                text=chart_name,
-                anchor="start",
-                fontSize=22,
-                fontWeight="bold",
-                color=TTS_COLORS["dark_blue"],
-                dy=-5,
-            )
-        ).configure_title(
-            font="Satoshi, Aptos, Segoe UI, Arial",
-            color=TTS_COLORS["dark_blue"],
-            fontSize=22,
-            fontWeight="bold",
-            anchor="start",
-        )
-
         CHART_EXPORTS.append((chart_name, export_chart))
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(screen_chart, use_container_width=True)
 
 
 logo_path = Path(__file__).parent / "assets" / "tts_logo.jpg"
