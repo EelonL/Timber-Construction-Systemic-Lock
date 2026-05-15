@@ -291,14 +291,42 @@ with col_logo:
     st.image(str(logo_path), width=120)
 
 with col_title:
-    st.markdown(
-        """
-        <h1 style="margin-bottom: 0; color: #0C397F;">
-            Puurakentamisen systeeminen malli
-        </h1>
-        """,
-        unsafe_allow_html=True,
-    )
+    title_col, info_col = st.columns([10, 1])
+
+    with title_col:
+        st.markdown(
+            """
+            <h1 style="margin-bottom: 0; color: #0C397F;">
+                Puurakentamisen systeeminen malli
+            </h1>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with info_col:
+        with st.popover("ℹ️"):
+            st.markdown(
+                """
+### Miten malli toimii?
+
+Tämä on **skenaariomalli**, ei ennuste. Malli ei siis kerro, mikä puun markkinaosuus Suomessa varmasti tulee olemaan. Sen tarkoitus on näyttää, miten eri tekijät voivat yhdessä joko hidastaa tai nopeuttaa puurakentamisen yleistymistä.
+
+Malli simuloi vuosittain joukon rakennushankkeita. Jokaisessa hankkeessa valitaan materiaaliksi **betoni**, **puu** tai **hybridi**. Valintaan vaikuttavat muun muassa:
+
+- kustannukset ja kustannusepävarmuus,
+- tilaajan kokema riski,
+- suunnittelu- ja urakointiosaaminen,
+- puutuoteteollisuuden toimituskyky,
+- materiaalien saatavuus,
+- julkinen hankinta ja hiiliohjaus,
+- koulutuksen vetovoima ja osaajaputki,
+- aiemmista hankkeista syntyvä luottamus ja oppiminen.
+
+Mallissa on takaisinkytkentöjä. Esimerkiksi onnistuneet puuhankkeet voivat lisätä luottamusta, osaamista ja referenssejä. Toisaalta nopea kysynnän kasvu voi synnyttää materiaalipullonkauloja, jolloin kustannus- ja toimitusketjuriski kasvavat.
+
+Tuloksia kannattaa lukea **skenaarioiden vertailuna**: mikä muuttuu, jos esimerkiksi hiiliohjaus kiristyy, koulutuspanostus kasvaa tai puutuotekapasiteetti jää jälkeen kysynnästä?
+                """
+            )
 
     st.markdown(
         """
@@ -308,7 +336,7 @@ with col_title:
         </p>
         """,
         unsafe_allow_html=True,
-)
+    )
 
 RISK_LABELS = {
     "risk_competence": "Osaamisriski",
