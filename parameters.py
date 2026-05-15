@@ -16,7 +16,7 @@ BUILDING_TYPES = {
         "wood_base_cost_premium": 0.10,
         "base_failure_probability_wood": 0.12,
         "base_failure_probability_hybrid": 0.08,
-        "risk_multiplier": 1.20,
+        "risk_multiplier": 1.25,
         "public_share": 0.15,
         "climate_relevance": 1.00,
         "policy_relevance": 0.80,
@@ -68,7 +68,7 @@ BUILDING_TYPES = {
         "wood_base_cost_premium": 0.04,
         "base_failure_probability_wood": 0.07,
         "base_failure_probability_hybrid": 0.05,
-        "risk_multiplier": 0.80,
+        "risk_multiplier": 0.85,
         "public_share": 0.10,
         "climate_relevance": 0.70,
         "policy_relevance": 0.50,
@@ -119,7 +119,7 @@ DEFAULT_PARAMS = {
     "wood_base_cost_premium": 0.08,
     "hybrid_base_cost_premium": 0.035,
     "capacity_shortage_penalty": 0.18,
-    "risk_sensitivity": 0.55,
+    "risk_sensitivity": 0.65,
     "cost_sensitivity": 0.60,
     "climate_sensitivity": 0.45,
 
@@ -172,7 +172,7 @@ DEFAULT_PARAMS = {
     "public_climate_weight": 0.55,
     "private_climate_weight": 0.25,
     "pioneer_bonus": 0.18,
-    "conservative_risk_extra": 0.12,
+    "conservative_risk_extra": 0.15,
 
     # Business cycle
     "cycle_amplitude": 0.15,
